@@ -6,6 +6,47 @@ import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database';
 import { ApiResponse } from '@/types/database';
 
+// Interfaces para tipado de reportes
+interface EquipoReporte {
+  no_serie: string;
+  nombreEquipo: string;
+  modelo: string;
+  marca: string;
+  estatus: string;
+  tipoEquipo: string;
+  sucursal: string;
+  valorEstimado: number;
+  fecha_adquisicion: string;
+  ubicacionActual: string;
+  responsable: string;
+  // Agregar otras propiedades según las queries específicas
+}
+
+interface MovimientoReporte {
+  no_serie: string;
+  totalMovimientos: number;
+  tipoMovimiento: string;
+  fecha: string;
+  tecnico: string;
+  // Agregar otras propiedades según las queries específicas
+}
+
+interface MantenimientoReporte {
+  no_serie: string;
+  tecnico: string;
+  tipo_mantenimiento: string;
+  fecha: string;
+  costoEstimado: number;
+  totalHorasEstimadas: number;
+  cantidadMantenimientos: number;
+  horasReales: number;
+  porcentajeUtilizacion: number;
+  estatusActual: string;
+  sucursal: string;
+  zona: string;
+  // Agregar otras propiedades según las queries específicas
+}
+
 // GET: Generar reportes específicos de equipos
 export async function GET(request: NextRequest) {
   try {
@@ -101,7 +142,7 @@ export async function GET(request: NextRequest) {
 // Función para reporte de inventario completo
 async function generarReporteInventarioCompleto(sucursal?: string | null) {
   let whereClause = '';
-  let queryParams: string[] = [];
+  const queryParams: string[] = [];
 
   if (sucursal) {
     whereClause = 'WHERE s.id = ?';
@@ -147,22 +188,25 @@ async function generarReporteInventarioCompleto(sucursal?: string | null) {
     ORDER BY s.nombre, te.nombre, e.nombreEquipo
   `;
 
-  const equipos = await executeQuery(query, queryParams);
+  const equipos = await executeQuery<EquipoReporte>(query, queryParams);
 
   // Calcular estadísticas
   const resumen = {
     totalEquipos: equipos.length,
-    valorTotalEstimado: equipos.reduce((sum: number, e: any) => sum + e.valorEstimado, 0),
-    porEstatus: equipos.reduce((acc: any, e: any) => {
-      acc[e.estatus] = (acc[e.estatus] || 0) + 1;
+    valorTotalEstimado: equipos.reduce((sum: number, e) => sum + (e.valorEstimado || 0), 0),
+    porEstatus: equipos.reduce((acc: Record<string, number>, e) => {
+      const estatus = String(e.estatus || 'Sin Estado');
+      acc[estatus] = (acc[estatus] || 0) + 1;
       return acc;
     }, {}),
-    porTipo: equipos.reduce((acc: any, e: any) => {
-      acc[e.tipoEquipo] = (acc[e.tipoEquipo] || 0) + 1;
+    porTipo: equipos.reduce((acc: Record<string, number>, e) => {
+      const tipo = String(e.tipoEquipo || 'Sin Tipo');
+      acc[tipo] = (acc[tipo] || 0) + 1;
       return acc;
     }, {}),
-    porSucursal: equipos.reduce((acc: any, e: any) => {
-      acc[e.sucursal] = (acc[e.sucursal] || 0) + 1;
+    porSucursal: equipos.reduce((acc: Record<string, number>, e) => {
+      const sucursal = String(e.sucursal || 'Sin Sucursal');
+      acc[sucursal] = (acc[sucursal] || 0) + 1;
       return acc;
     }, {})
   };
@@ -180,7 +224,7 @@ async function generarReporteInventarioCompleto(sucursal?: string | null) {
 // Función para reporte de equipos por estatus
 async function generarReporteEquiposPorEstatus(sucursal?: string | null) {
   let whereClause = '';
-  let queryParams: string[] = [];
+  const queryParams: string[] = [];
 
   if (sucursal) {
     whereClause = 'WHERE s.id = ?';
@@ -211,8 +255,8 @@ async function generarReporteEquiposPorEstatus(sucursal?: string | null) {
     datos,
     resumen: {
       totalCombinaciones: datos.length,
-      estatusUnicos: [...new Set(datos.map((d: any) => d.estatus))],
-      tiposUnicos: [...new Set(datos.map((d: any) => d.tipoEquipo))]
+      estatusUnicos: [...new Set(datos.map((d: Record<string, unknown>) => d.estatus))],
+      tiposUnicos: [...new Set(datos.map((d: Record<string, unknown>) => d.tipoEquipo))]
     }
   };
 }
@@ -223,8 +267,8 @@ async function generarReporteMovimientosFrecuentes(
   fechaHasta?: string | null, 
   sucursal?: string | null
 ) {
-  let whereConditions = [];
-  let queryParams: string[] = [];
+  const whereConditions = [];
+  const queryParams: string[] = [];
 
   if (fechaDesde) {
     whereConditions.push('DATE(mi.fecha) >= ?');
@@ -267,15 +311,15 @@ async function generarReporteMovimientosFrecuentes(
     LIMIT 50
   `;
 
-  const equiposConMovimientos = await executeQuery(query, queryParams);
+  const equiposConMovimientos = await executeQuery<MovimientoReporte>(query, queryParams);
 
   return {
     equiposConMovimientos,
     resumen: {
       equiposAnalizados: equiposConMovimientos.length,
-      totalMovimientos: equiposConMovimientos.reduce((sum: number, e: any) => sum + e.totalMovimientos, 0),
+      totalMovimientos: equiposConMovimientos.reduce((sum: number, e) => sum + (e.totalMovimientos || 0), 0),
       promedioMovimientosPorEquipo: equiposConMovimientos.length > 0 
-        ? equiposConMovimientos.reduce((sum: number, e: any) => sum + e.totalMovimientos, 0) / equiposConMovimientos.length 
+        ? equiposConMovimientos.reduce((sum: number, e) => sum + (e.totalMovimientos || 0), 0) / equiposConMovimientos.length 
         : 0
     }
   };
@@ -283,8 +327,8 @@ async function generarReporteMovimientosFrecuentes(
 
 // Función para reporte de mantenimientos pendientes
 async function generarReporteMantenimientosPendientes(sucursal?: string | null) {
-  let whereConditions = ['tm.nombre = "MANTENIMIENTO"', 'em.nombre = "ABIERTO"'];
-  let queryParams: string[] = [];
+  const whereConditions = ['tm.nombre = "MANTENIMIENTO"', 'em.nombre = "ABIERTO"'];
+  const queryParams: string[] = [];
 
   if (sucursal) {
     whereConditions.push('s.id = ?');
@@ -329,10 +373,10 @@ async function generarReporteMantenimientosPendientes(sucursal?: string | null) 
     mantenimientosPendientes,
     resumen: {
       total: mantenimientosPendientes.length,
-      urgentes: mantenimientosPendientes.filter((m: any) => m.estadoVencimiento === 'URGENTE').length,
-      atrasados: mantenimientosPendientes.filter((m: any) => m.estadoVencimiento === 'ATRASADO').length,
-      vencidos: mantenimientosPendientes.filter((m: any) => m.estadoVencimiento === 'VENCIDO').length,
-      enTiempo: mantenimientosPendientes.filter((m: any) => m.estadoVencimiento === 'EN_TIEMPO').length
+      urgentes: mantenimientosPendientes.filter((m: Record<string, unknown>) => m.estadoVencimiento === 'URGENTE').length,
+      atrasados: mantenimientosPendientes.filter((m: Record<string, unknown>) => m.estadoVencimiento === 'ATRASADO').length,
+      vencidos: mantenimientosPendientes.filter((m: Record<string, unknown>) => m.estadoVencimiento === 'VENCIDO').length,
+      enTiempo: mantenimientosPendientes.filter((m: Record<string, unknown>) => m.estadoVencimiento === 'EN_TIEMPO').length
     }
   };
 }
@@ -344,7 +388,7 @@ async function generarReporteUtilizacionEquipos(
   sucursal?: string | null
 ) {
   // Implementación simplificada
-  const equipos = await executeQuery(`
+  const equipos = await executeQuery<MantenimientoReporte>(`
     SELECT 
       e.no_serie,
       e.nombreEquipo,
@@ -373,10 +417,10 @@ async function generarReporteUtilizacionEquipos(
   return {
     equipos,
     resumen: {
-      utilizacionPromedio: equipos.reduce((sum: number, e: any) => sum + e.porcentajeUtilizacion, 0) / equipos.length,
-      equiposEnUso: equipos.filter((e: any) => e.estatusActual === 'En uso').length,
-      equiposDisponibles: equipos.filter((e: any) => e.estatusActual === 'Disponible').length,
-      equiposInactivos: equipos.filter((e: any) => ['Mantenimiento', 'Dañado', 'Baja'].includes(e.estatusActual)).length
+      utilizacionPromedio: equipos.reduce((sum: number, e: MantenimientoReporte) => sum + (e.porcentajeUtilizacion || 0), 0) / equipos.length,
+      equiposEnUso: equipos.filter((e: MantenimientoReporte) => String(e.estatusActual) === 'En uso').length,
+      equiposDisponibles: equipos.filter((e: MantenimientoReporte) => String(e.estatusActual) === 'Disponible').length,
+      equiposInactivos: equipos.filter((e: MantenimientoReporte) => ['Mantenimiento', 'Dañado', 'Baja'].includes(String(e.estatusActual))).length
     }
   };
 }
@@ -417,9 +461,9 @@ async function generarReporteEquiposObsoletos(sucursal?: string | null) {
     equiposObsoletos,
     resumen: {
       total: equiposObsoletos.length,
-      obsoletos: equiposObsoletos.filter((e: any) => e.categoriaEdad === 'OBSOLETO').length,
-      antiguos: equiposObsoletos.filter((e: any) => e.categoriaEdad === 'ANTIGUO').length,
-      recomendacionesReemplazo: equiposObsoletos.filter((e: any) => e.categoriaEdad === 'OBSOLETO').length
+      obsoletos: equiposObsoletos.filter((e: Record<string, unknown>) => e.categoriaEdad === 'OBSOLETO').length,
+      antiguos: equiposObsoletos.filter((e: Record<string, unknown>) => e.categoriaEdad === 'ANTIGUO').length,
+      recomendacionesReemplazo: equiposObsoletos.filter((e: Record<string, unknown>) => e.categoriaEdad === 'OBSOLETO').length
     }
   };
 }
@@ -431,7 +475,7 @@ async function generarReporteCostoMantenimiento(
   sucursal?: string | null
 ) {
   // Implementación con costos estimados
-  const costos = await executeQuery(`
+  const costos = await executeQuery<MantenimientoReporte>(`
     SELECT 
       s.nombre AS sucursal,
       te.nombre AS tipoEquipo,
@@ -456,9 +500,9 @@ async function generarReporteCostoMantenimiento(
   return {
     costos,
     resumen: {
-      costoTotal: costos.reduce((sum: number, c: any) => sum + c.costoEstimado, 0),
-      horasTotales: costos.reduce((sum: number, c: any) => sum + c.totalHorasEstimadas, 0),
-      mantenimientosTotales: costos.reduce((sum: number, c: any) => sum + c.cantidadMantenimientos, 0)
+      costoTotal: costos.reduce((sum: number, c) => sum + (c.costoEstimado || 0), 0),
+      horasTotales: costos.reduce((sum: number, c) => sum + (c.totalHorasEstimadas || 0), 0),
+      mantenimientosTotales: costos.reduce((sum: number, c) => sum + (c.cantidadMantenimientos || 0), 0)
     }
   };
 }
@@ -468,7 +512,7 @@ async function generarReporteEficienciaSucursales(
   fechaDesde?: string | null, 
   fechaHasta?: string | null
 ) {
-  const eficiencia = await executeQuery(`
+  const eficiencia = await executeQuery<MantenimientoReporte>(`
     SELECT 
       s.nombre AS sucursal,
       z.nombre AS zona,
@@ -501,13 +545,13 @@ async function generarReporteEficienciaSucursales(
     eficiencia,
     resumen: {
       sucursalMasEficiente: eficiencia[0]?.sucursal || 'N/A',
-      promedioUtilizacion: eficiencia.reduce((sum: number, e: any) => sum + e.porcentajeUtilizacion, 0) / eficiencia.length
+      promedioUtilizacion: eficiencia.length > 0 ? eficiencia.reduce((sum: number, e) => sum + (e.porcentajeUtilizacion || 0), 0) / eficiencia.length : 0
     }
   };
 }
 
 // Función para convertir datos a CSV
-function convertirACSV(data: any[]): string {
+function convertirACSV(data: Record<string, unknown>[]): string {
   if (!data || data.length === 0) return '';
   
   const headers = Object.keys(data[0]);

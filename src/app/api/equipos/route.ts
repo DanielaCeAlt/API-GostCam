@@ -55,13 +55,13 @@ export async function POST(request: NextRequest) {
       idTipoEquipo,
       numeroActivo,
       idUsuarios,
-      idLayout,
+      idPosicion,
       idEstatus,
       idCentro
     } = body;
 
     // Validar campos requeridos
-    if (!no_serie || !nombreEquipo || !modelo || !idTipoEquipo || !numeroActivo || !idUsuarios || !idLayout || !idEstatus) {
+    if (!no_serie || !nombreEquipo || !modelo || !idTipoEquipo || !numeroActivo || !idUsuarios || !idPosicion || !idEstatus) {
       return NextResponse.json({
         success: false,
         error: 'Todos los campos son requeridos'
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
         idTipoEquipo,
         numeroActivo,
         idUsuarios,
-        idLayout,
+        idPosicion,
         idEstatus,
         idCentro
       ]);
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
         idTipoEquipo,
         numeroActivo,
         idUsuarios,
-        idLayout,
+        idPosicion,
         idEstatus
       ]);
     }

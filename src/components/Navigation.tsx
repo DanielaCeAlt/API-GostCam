@@ -1,11 +1,12 @@
 // =============================================
-// COMPONENTE: NAVIGATION
+// COMPONENTE DE NAVEGACIÓN - GOSTCAM
 // =============================================
 
 'use client';
 
 import React, { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
+import { ThemeToggle } from '@/contexts/ThemeContext';
 
 export default function Navigation() {
   const { state, logout, setSection, getUserRoleColor } = useApp();
@@ -16,10 +17,10 @@ export default function Navigation() {
   }
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'fas fa-chart-dashboard' },
+    { id: 'dashboard', label: 'Inicio', icon: 'fas fa-home' },
     { id: 'equipos', label: 'Equipos', icon: 'fas fa-desktop' },
-    { id: 'movimientos', label: 'Movimientos', icon: 'fas fa-exchange-alt' },
-    { id: 'reportes', label: 'Reportes', icon: 'fas fa-chart-bar' },
+    { id: 'sucursales', label: 'Sucursales', icon: 'fas fa-building' },
+    { id: 'fallas', label: 'Fallas', icon: 'fas fa-exclamation-triangle' },
   ];
 
   const handleSectionClick = (sectionId: string) => {
@@ -32,7 +33,7 @@ export default function Navigation() {
   };
 
   return (
-    <nav className="bg-white shadow-lg border-b border-gray-200">
+    <nav className="bg-white dark:bg-gray-800 shadow-lg border-b border-gray-200 dark:border-gray-700 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Logo y título */}
@@ -65,6 +66,9 @@ export default function Navigation() {
 
           {/* User info y logout - Desktop */}
           <div className="hidden md:flex md:items-center md:space-x-4">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+            
             {/* User info */}
             <div className="flex items-center space-x-3">
               <div className="text-right">

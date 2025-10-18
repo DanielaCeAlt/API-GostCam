@@ -37,14 +37,6 @@ export default function LoginScreen() {
     }
   };
 
-  // Usuarios de prueba para mostrar
-  const testUsers = [
-    { email: 'admin@gostcam.com', password: 'Pass123', role: 'Administrador' },
-    { email: 'admin1@gostcam.com', password: 'password123', role: 'Administrador' },
-    { email: 'supervisor@gostcam.com', password: 'password123', role: 'Supervisor' },
-    { email: 'tecnico@gostcam.com', password: 'password123', role: 'Técnico' },
-  ];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -133,19 +125,6 @@ export default function LoginScreen() {
               )}
             </button>
           </form>
-
-          {/* Usuarios de prueba */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h3 className="text-sm font-medium text-gray-700 mb-3">Usuarios de prueba:</h3>
-            <div className="space-y-2">
-              {testUsers.map((user, index) => (
-                <div key={index} className="text-xs bg-gray-50 p-2 rounded">
-                  <div className="font-medium text-gray-900">{user.email}</div>
-                  <div className="text-gray-500">{user.password} • {user.role}</div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Footer */}

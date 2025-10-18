@@ -95,14 +95,16 @@ export async function GET(request: NextRequest) {
       'Obsoleto': '#6B7280'
     };
 
-    const estatusPorcentajes = estatusData.map((item: any) => ({
+    type EstatusRow = { estatus: string; porcentaje: string | number };
+    const estatusPorcentajes = (estatusData as EstatusRow[]).map((item) => ({
       estatus: item.estatus,
-      porcentaje: parseFloat(item.porcentaje),
+      porcentaje: typeof item.porcentaje === 'string' ? parseFloat(item.porcentaje) : item.porcentaje,
       color: colores[item.estatus as keyof typeof colores] || '#6B7280'
     }));
 
     // Formatear movimientos por mes
-    const movimientosFormateados = movimientosPorMes.map((item: any) => {
+    type MovMesRow = { mes: string; cantidad: number };
+    const movimientosFormateados = (movimientosPorMes as MovMesRow[]).map((item) => {
       const [year, month] = item.mes.split('-');
       const monthNames = [
         'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
@@ -114,15 +116,29 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    type StatsRow = { 
+      totalEquipos?: number; 
+      equiposDisponibles?: number; 
+      equiposEnUso?: number; 
+      equiposMantenimiento?: number; 
+      equiposDañados?: number;
+    };
+    type MovAbiertosRow = { movimientosAbiertos?: number };
+    type MovMesStatsRow = { movimientosMes?: number };
+
+    const statsTyped = stats as StatsRow;
+    const movAbiertosTyped = movimientosAbiertos as MovAbiertosRow;
+    const movMesTyped = movimientosMes as MovMesStatsRow;
+
     const dashboardData: DashboardStats = {
-      totalEquipos: stats.totalEquipos || 0,
-      equiposDisponibles: stats.equiposDisponibles || 0,
-      equiposEnUso: stats.equiposEnUso || 0,
-      equiposMantenimiento: stats.equiposMantenimiento || 0,
-      equiposDañados: stats.equiposDañados || 0,
-      movimientosAbiertos: movimientosAbiertos.movimientosAbiertos || 0,
-      movimientosMes: movimientosMes.movimientosMes || 0,
-      equiposPorTipo: equiposPorTipo || [],
+      totalEquipos: statsTyped.totalEquipos || 0,
+      equiposDisponibles: statsTyped.equiposDisponibles || 0,
+      equiposEnUso: statsTyped.equiposEnUso || 0,
+      equiposMantenimiento: statsTyped.equiposMantenimiento || 0,
+      equiposDañados: statsTyped.equiposDañados || 0,
+      movimientosAbiertos: movAbiertosTyped.movimientosAbiertos || 0,
+      movimientosMes: movMesTyped.movimientosMes || 0,
+      equiposPorTipo: (equiposPorTipo as { tipo: string; cantidad: number; }[]) || [],
       movimientosPorMes: movimientosFormateados || [],
       estatusPorcentajes: estatusPorcentajes || []
     };

@@ -3,7 +3,17 @@
 // =============================================
 
 import { pythonApiClient } from './pythonApiClient';
-import { DashboardStats, VistaEquipoCompleto, VistaMovimientoDetallado } from '@/types/database';
+import { 
+  DashboardStats, 
+  VistaEquipoCompleto, 
+  VistaMovimientoDetallado,
+  ApiResponse,
+  LoginResponse,
+  EquipoCreateRequest,
+  MovimientoCreateRequest,
+  FiltrosEquipos,
+  FiltrosMovimientos
+} from '@/types/database';
 
 export type ApiMode = 'nextjs' | 'python';
 
@@ -28,7 +38,7 @@ class ApiService {
   // ========================
   // MÉTODOS GENÉRICOS
   // ========================
-  async get(url: string): Promise<any> {
+  async get<T>(url: string): Promise<ApiResponse<T>> {
     try {
       const response = await fetch(url, {
         method: 'GET',
@@ -38,14 +48,14 @@ class ApiService {
         },
       });
       
-      return await response.json();
+      return await response.json() as ApiResponse<T>;
     } catch (error) {
       console.error(`GET error (${url}):`, error);
       throw error;
     }
   }
 
-  async post(url: string, data: any): Promise<any> {
+  async post<T>(url: string, data: Record<string, unknown>): Promise<ApiResponse<T>> {
     try {
       const response = await fetch(url, {
         method: 'POST',
@@ -56,14 +66,14 @@ class ApiService {
         body: JSON.stringify(data),
       });
       
-      return await response.json();
+      return await response.json() as ApiResponse<T>;
     } catch (error) {
       console.error(`POST error (${url}):`, error);
       throw error;
     }
   }
 
-  async put(url: string, data: any): Promise<any> {
+  async put<T>(url: string, data: Record<string, unknown>): Promise<ApiResponse<T>> {
     try {
       const response = await fetch(url, {
         method: 'PUT',
@@ -74,14 +84,14 @@ class ApiService {
         body: JSON.stringify(data),
       });
       
-      return await response.json();
+      return await response.json() as ApiResponse<T>;
     } catch (error) {
       console.error(`PUT error (${url}):`, error);
       throw error;
     }
   }
 
-  async delete(url: string): Promise<any> {
+  async delete<T>(url: string): Promise<ApiResponse<T>> {
     try {
       const response = await fetch(url, {
         method: 'DELETE',
@@ -91,7 +101,7 @@ class ApiService {
         },
       });
       
-      return await response.json();
+      return await response.json() as ApiResponse<T>;
     } catch (error) {
       console.error(`DELETE error (${url}):`, error);
       throw error;
@@ -101,11 +111,11 @@ class ApiService {
   // ========================
   // AUTENTICACIÓN
   // ========================
-  async login(correo: string, contraseña: string) {
+  async login(correo: string, contraseña: string): Promise<LoginResponse> {
     try {
       if (this.currentMode === 'python') {
         const response = await pythonApiClient.login(correo, contraseña);
-        return response;
+        return response as LoginResponse;
       } else {
         // Next.js API
         const response = await fetch('/api/auth/login', {
@@ -116,7 +126,7 @@ class ApiService {
           body: JSON.stringify({ correo, contraseña }),
         });
         
-        return await response.json();
+        return await response.json() as LoginResponse;
       }
     } catch (error) {
       console.error(`Login error (${this.currentMode}):`, error);
@@ -127,10 +137,10 @@ class ApiService {
   // ========================
   // DASHBOARD
   // ========================
-  async getDashboardStats(): Promise<any> {
+  async getDashboardStats(): Promise<ApiResponse<DashboardStats>> {
     try {
       if (this.currentMode === 'python') {
-        return await pythonApiClient.getDashboardStats();
+        return await pythonApiClient.getDashboardStats() as ApiResponse<DashboardStats>;
       } else {
         // Next.js API
         const response = await fetch('/api/dashboard', {
@@ -139,7 +149,7 @@ class ApiService {
           },
         });
         
-        return await response.json();
+        return await response.json() as ApiResponse<DashboardStats>;
       }
     } catch (error) {
       console.error(`Dashboard stats error (${this.currentMode}):`, error);
@@ -150,17 +160,18 @@ class ApiService {
   // ========================
   // EQUIPOS
   // ========================
-  async getEquipos(filters?: any): Promise<any> {
+  async getEquipos(filters?: FiltrosEquipos): Promise<ApiResponse<VistaEquipoCompleto[]>> {
     try {
       if (this.currentMode === 'python') {
-        return await pythonApiClient.getEquipos(filters);
+        return await pythonApiClient.getEquipos(filters) as ApiResponse<VistaEquipoCompleto[]>;
       } else {
         // Next.js API
         const queryParams = new URLSearchParams();
         if (filters) {
           Object.keys(filters).forEach(key => {
-            if (filters[key]) {
-              queryParams.append(key, filters[key]);
+            const value = filters[key as keyof FiltrosEquipos];
+            if (value) {
+              queryParams.append(key, value);
             }
           });
         }
@@ -171,7 +182,7 @@ class ApiService {
           },
         });
 
-        return await response.json();
+        return await response.json() as ApiResponse<VistaEquipoCompleto[]>;
       }
     } catch (error) {
       console.error(`Equipos error (${this.currentMode}):`, error);
@@ -179,10 +190,10 @@ class ApiService {
     }
   }
 
-  async createEquipo(equipoData: any): Promise<any> {
+  async createEquipo(equipoData: EquipoCreateRequest): Promise<ApiResponse<VistaEquipoCompleto>> {
     try {
       if (this.currentMode === 'python') {
-        return await pythonApiClient.createEquipo(equipoData);
+        return await pythonApiClient.createEquipo(equipoData) as ApiResponse<VistaEquipoCompleto>;
       } else {
         // Next.js API
         const response = await fetch('/api/equipos', {
@@ -193,8 +204,8 @@ class ApiService {
           },
           body: JSON.stringify(equipoData),
         });
-        
-        return await response.json();
+
+        return await response.json() as ApiResponse<VistaEquipoCompleto>;
       }
     } catch (error) {
       console.error(`Create equipo error (${this.currentMode}):`, error);
@@ -202,10 +213,10 @@ class ApiService {
     }
   }
 
-  async updateEquipo(noSerie: string, equipoData: any): Promise<any> {
+  async updateEquipo(noSerie: string, equipoData: Partial<EquipoCreateRequest>): Promise<ApiResponse<VistaEquipoCompleto>> {
     try {
       if (this.currentMode === 'python') {
-        return await pythonApiClient.updateEquipo(noSerie, equipoData);
+        return await pythonApiClient.updateEquipo(noSerie, equipoData) as ApiResponse<VistaEquipoCompleto>;
       } else {
         // Next.js API
         const response = await fetch(`/api/equipos/${noSerie}`, {
@@ -217,7 +228,7 @@ class ApiService {
           body: JSON.stringify(equipoData),
         });
         
-        return await response.json();
+        return await response.json() as ApiResponse<VistaEquipoCompleto>;
       }
     } catch (error) {
       console.error(`Update equipo error (${this.currentMode}):`, error);
@@ -225,10 +236,10 @@ class ApiService {
     }
   }
 
-  async deleteEquipo(noSerie: string): Promise<any> {
+  async deleteEquipo(noSerie: string): Promise<ApiResponse<{ deleted: boolean }>> {
     try {
       if (this.currentMode === 'python') {
-        return await pythonApiClient.deleteEquipo(noSerie);
+        return await pythonApiClient.deleteEquipo(noSerie) as ApiResponse<{ deleted: boolean }>;
       } else {
         // Next.js API
         const response = await fetch(`/api/equipos/${noSerie}`, {
@@ -238,7 +249,7 @@ class ApiService {
           },
         });
         
-        return await response.json();
+        return await response.json() as ApiResponse<{ deleted: boolean }>;
       }
     } catch (error) {
       console.error(`Delete equipo error (${this.currentMode}):`, error);
@@ -249,17 +260,18 @@ class ApiService {
   // ========================
   // MOVIMIENTOS
   // ========================
-  async getMovimientos(filters?: any): Promise<any> {
+  async getMovimientos(filters?: FiltrosMovimientos): Promise<ApiResponse<VistaMovimientoDetallado[]>> {
     try {
       if (this.currentMode === 'python') {
-        return await pythonApiClient.getMovimientos(filters);
+        return await pythonApiClient.getMovimientos(filters) as ApiResponse<VistaMovimientoDetallado[]>;
       } else {
         // Next.js API
         const queryParams = new URLSearchParams();
         if (filters) {
           Object.keys(filters).forEach(key => {
-            if (filters[key]) {
-              queryParams.append(key, filters[key]);
+            const value = filters[key as keyof FiltrosMovimientos];
+            if (value) {
+              queryParams.append(key, value);
             }
           });
         }
@@ -270,7 +282,7 @@ class ApiService {
           },
         });
 
-        return await response.json();
+        return await response.json() as ApiResponse<VistaMovimientoDetallado[]>;
       }
     } catch (error) {
       console.error(`Movimientos error (${this.currentMode}):`, error);
@@ -278,10 +290,10 @@ class ApiService {
     }
   }
 
-  async createMovimiento(movimientoData: any): Promise<any> {
+  async createMovimiento(movimientoData: MovimientoCreateRequest): Promise<ApiResponse<VistaMovimientoDetallado>> {
     try {
       if (this.currentMode === 'python') {
-        return await pythonApiClient.createMovimiento(movimientoData);
+        return await pythonApiClient.createMovimiento(movimientoData) as ApiResponse<VistaMovimientoDetallado>;
       } else {
         // Next.js API
         const response = await fetch('/api/movimientos', {
@@ -293,7 +305,7 @@ class ApiService {
           body: JSON.stringify(movimientoData),
         });
         
-        return await response.json();
+        return await response.json() as ApiResponse<VistaMovimientoDetallado>;
       }
     } catch (error) {
       console.error(`Create movimiento error (${this.currentMode}):`, error);
@@ -304,10 +316,10 @@ class ApiService {
   // ========================
   // CATÁLOGOS
   // ========================
-  async getCatalogos(): Promise<any> {
+  async getCatalogos(): Promise<ApiResponse<Record<string, unknown[]>>> {
     try {
       if (this.currentMode === 'python') {
-        return await pythonApiClient.getCatalogos();
+        return await pythonApiClient.getCatalogos() as ApiResponse<Record<string, unknown[]>>;
       } else {
         // Next.js API
         const response = await fetch('/api/catalogos', {
@@ -316,7 +328,7 @@ class ApiService {
           },
         });
 
-        return await response.json();
+        return await response.json() as ApiResponse<Record<string, unknown[]>>;
       }
     } catch (error) {
       console.error(`Catalogos error (${this.currentMode}):`, error);

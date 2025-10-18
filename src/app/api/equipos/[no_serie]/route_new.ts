@@ -1,33 +1,13 @@
-// =============================================
-// API: DETALLES COMPLETOS DE EQUIPO
-// =============================================
+import { NextRequest, NextResponse } from "next/server";
+import { executeQuery } from "@/lib/database";
 
-import { NextRequest, NextResponse } from 'next/server';
-import { executeQuery } from '@/lib/database';
-import { ApiResponse } from '@/types/database';
-
-// Interfaces de tipo para los resultados de la base de datos
-interface EquipoSimilar {
-  no_serie: string;
-  nombreEquipo: string;
-  modelo: string;
-  estatus: string;
-}
-
-interface MovimientoHistorial {
-  fecha: string;
-  fechaFin?: string | null;
-  tipoMovimiento: string;
-  estatusMovimiento: string;
-  sucursalOrigen?: string;
-  sucursalDestino?: string;
-}
-
-interface EstadisticasEquipo {
-  totalMovimientos: number;
-  ultimoMovimiento?: string | null;
-  promedioDiasMovimiento: number;
-  sucursalesVisitadas: number;
+// Tipo para la respuesta de la API
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+  details?: string;
 }
 
 export async function GET(
@@ -108,32 +88,29 @@ export async function GET(
     // Obtener historial de movimientos del equipo
     const movimientosQuery = `
       SELECT 
-        mi.id as idMovimiento,
-        mi.fecha,
-        mi.fechaFin,
-        tm.nombre AS tipoMovimiento,
-        em.nombre AS estatusMovimiento,
-        s_origen.nombre AS sucursalOrigen,
-        s_destino.nombre AS sucursalDestino,
-        z_origen.nombre AS zonaOrigen,
-        z_destino.nombre AS zonaDestino,
-        u_mov.nombre AS usuarioMovimiento,
+        m.idMovimientoInv,
+        tm.tipoMovimiento,
+        m.fecha,
+        s_origen.Sucursal as sucursalOrigen,
+        s_destino.Sucursal as sucursalDestino,
+        z_origen.Zona as zonaOrigen,
+        z_destino.Zona as zonaDestino,
+        m.estatusMovimiento,
+        m.fechaFin,
         CASE 
-          WHEN mi.fechaFin IS NOT NULL 
-          THEN DATEDIFF(mi.fechaFin, mi.fecha)
-          ELSE DATEDIFF(CURDATE(), mi.fecha)
-        END AS duracionDias,
-        mi.observaciones
-      FROM movimientoinventario mi
-      INNER JOIN tipomovimiento tm ON mi.idTipoMov = tm.id
-      INNER JOIN estatusmovimiento em ON mi.idEstatusMov = em.id
-      INNER JOIN sucursales s_origen ON mi.origen_idCentro = s_origen.id
-      INNER JOIN sucursales s_destino ON mi.destino_idCentro = s_destino.id
-      INNER JOIN zonas z_origen ON s_origen.zona = z_origen.id
-      INNER JOIN zonas z_destino ON s_destino.zona = z_destino.id
-      INNER JOIN usuarios u_mov ON mi.idUsuarios = u_mov.id
-      WHERE mi.no_serie = ?
-      ORDER BY mi.fecha DESC
+          WHEN m.fechaFin IS NOT NULL 
+          THEN DATEDIFF(m.fechaFin, m.fecha)
+          ELSE DATEDIFF(CURDATE(), m.fecha)
+        END AS duracionDias
+      FROM GostCAM.MovimientoInventario m
+      INNER JOIN GostCAM.TipoMovimiento tm ON m.idTipoMov = tm.idTipoMov
+      INNER JOIN GostCAM.Sucursales s_origen ON m.origen_idCentro = s_origen.idCentro
+      INNER JOIN GostCAM.Sucursales s_destino ON m.destino_idCentro = s_destino.idCentro
+      INNER JOIN GostCAM.Zonas z_origen ON s_origen.idZona = z_origen.idZona
+      INNER JOIN GostCAM.Zonas z_destino ON s_destino.idZona = z_destino.idZona
+      INNER JOIN GostCAM.DetMovimiento d ON m.idMovimientoInv = d.idMovimientoInv
+      WHERE d.no_serie = ?
+      ORDER BY m.fecha DESC
       LIMIT 10
     `;
 
@@ -143,20 +120,20 @@ export async function GET(
     const estadisticasQuery = `
       SELECT 
         COUNT(*) as totalMovimientos,
-        SUM(CASE WHEN tm.nombre = 'TRASLADO' THEN 1 ELSE 0 END) as totalTraslados,
-        SUM(CASE WHEN tm.nombre = 'MANTENIMIENTO' THEN 1 ELSE 0 END) as totalMantenimientos,
-        SUM(CASE WHEN tm.nombre = 'REPARACIÓN' THEN 1 ELSE 0 END) as totalReparaciones,
-        SUM(CASE WHEN em.nombre = 'ABIERTO' THEN 1 ELSE 0 END) as movimientosAbiertos,
+        SUM(CASE WHEN tm.tipoMovimiento = 'TRASLADO' THEN 1 ELSE 0 END) as totalTraslados,
+        SUM(CASE WHEN tm.tipoMovimiento = 'MANTENIMIENTO' THEN 1 ELSE 0 END) as totalMantenimientos,
+        SUM(CASE WHEN tm.tipoMovimiento = 'REPARACIÓN' THEN 1 ELSE 0 END) as totalReparaciones,
+        SUM(CASE WHEN m.estatusMovimiento = 'ABIERTO' THEN 1 ELSE 0 END) as movimientosAbiertos,
         AVG(CASE 
-          WHEN mi.fechaFin IS NOT NULL 
-          THEN DATEDIFF(mi.fechaFin, mi.fecha)
+          WHEN m.fechaFin IS NOT NULL 
+          THEN DATEDIFF(m.fechaFin, m.fecha)
           ELSE NULL
         END) as promedioDiasMovimiento,
-        MAX(mi.fecha) as ultimoMovimiento
-      FROM movimientoinventario mi
-      INNER JOIN tipomovimiento tm ON mi.idTipoMov = tm.id
-      INNER JOIN estatusmovimiento em ON mi.idEstatusMov = em.id
-      WHERE mi.no_serie = ?
+        MAX(m.fecha) as ultimoMovimiento
+      FROM GostCAM.MovimientoInventario m
+      INNER JOIN GostCAM.TipoMovimiento tm ON m.idTipoMov = tm.idTipoMov
+      INNER JOIN GostCAM.DetMovimiento d ON m.idMovimientoInv = d.idMovimientoInv
+      WHERE d.no_serie = ?
     `;
 
     const estadisticas = await executeQuery(estadisticasQuery, [no_serie]);
@@ -167,76 +144,100 @@ export async function GET(
         e.no_serie,
         e.nombreEquipo,
         e.modelo,
-        ee.nombre AS estatus
-      FROM equipo e
-      INNER JOIN estatusequipo ee ON e.idEstatus = ee.id
-      INNER JOIN layout l ON e.idLayout = l.id
+        ee.estatus AS estatus
+      FROM GostCAM.Equipo e
+      INNER JOIN GostCAM.EstatusEquipo ee ON e.idEstatus = ee.idEstatus
+      INNER JOIN GostCAM.PosicionEquipo p ON e.idPosicion = p.idPosicion
       WHERE e.idTipoEquipo = ? 
-        AND l.centro = (
-          SELECT l2.centro 
-          FROM equipo e2 
-          INNER JOIN layout l2 ON e2.idLayout = l2.id 
+        AND p.idCentro = (
+          SELECT p2.idCentro 
+          FROM GostCAM.Equipo e2 
+          INNER JOIN GostCAM.PosicionEquipo p2 ON e2.idPosicion = p2.idPosicion 
           WHERE e2.no_serie = ?
         )
         AND e.no_serie != ?
       LIMIT 5
     `;
 
+    // Definir interfaces para tipado
+    interface EquipoSimilar {
+      no_serie: string;
+      nombreEquipo: string;
+      modelo: string;
+      estatus: string;
+    }
+
+    interface MovimientoHistorial {
+      idMovimientoInv: number;
+      tipoMovimiento: string;
+      fecha: Date;
+      sucursalOrigen: string;
+      sucursalDestino: string;
+      zonaOrigen: string;
+      zonaDestino: string;
+      estatusMovimiento: string;
+      fechaFin: Date | null;
+      duracionDias: number;
+    }
+
+    interface EstadisticasEquipo {
+      totalMovimientos: number;
+      totalTraslados: number;
+      totalMantenimientos: number;
+      totalReparaciones: number;
+      movimientosAbiertos: number;
+      promedioDiasMovimiento: number | null;
+      ultimoMovimiento: Date | null;
+    }
+
     const equiposSimilares = await executeQuery(equiposSimilaresQuery, [
-      (equipo as any).idTipoEquipo, 
-      no_serie, 
+      (equipo as any).idTipoEquipo,
+      no_serie,
       no_serie
     ]) as EquipoSimilar[];
 
-    // Compilar respuesta completa
-    const response = {
-      equipo: {
-        ...(equipo as any),
-        fechaAlta: new Date((equipo as any).fechaAlta).toISOString(),
-        ubicacion: {
-          coordenadas: {
-            latitud: (equipo as any).latitud,
-            longitud: (equipo as any).longitud
-          },
-          jerarquia: {
-            estado: (equipo as any).EstadoSucursal,
-            municipio: (equipo as any).MunicipioSucursal,
+    // Construir respuesta completa
+    return NextResponse.json({
+      success: true,
+      data: {
+        equipo: {
+          ...(equipo as any),
+          fechaAlta: new Date((equipo as any).fechaAlta).toISOString(),
+          ubicacion: {
             zona: (equipo as any).ZonaSucursal,
             sucursal: (equipo as any).SucursalActual,
             area: (equipo as any).AreaActual
           }
+        },
+        historial: (movimientos as unknown as MovimientoHistorial[]).map(mov => ({
+          ...mov,
+          fecha: new Date(mov.fecha).toISOString(),
+          fechaFin: mov.fechaFin ? new Date(mov.fechaFin).toISOString() : null
+        })),
+        estadisticas: {
+          ...(estadisticas[0] as unknown as EstadisticasEquipo),
+          ultimoMovimiento: (estadisticas[0] as unknown as EstadisticasEquipo)?.ultimoMovimiento 
+            ? new Date((estadisticas[0] as unknown as EstadisticasEquipo).ultimoMovimiento!).toISOString() 
+            : null,
+          promedioDiasMovimiento: Math.round((estadisticas[0] as unknown as EstadisticasEquipo)?.promedioDiasMovimiento || 0)
+        },
+        equiposSimilares,
+        metadatos: {
+          consultadoEn: new Date().toISOString(),
+          totalRegistros: {
+            movimientos: movimientos.length,
+            equiposSimilares: equiposSimilares.length
+          }
         }
-      },
-      historial: (movimientos as any[]).map((mov: any) => ({
-        ...mov,
-        fecha: new Date(mov.fecha).toISOString(),
-        fechaFin: mov.fechaFin ? new Date(mov.fechaFin).toISOString() : null
-      })),
-      estadisticas: {
-        ...(estadisticas[0] as any),
-        ultimoMovimiento: (estadisticas[0] as any)?.ultimoMovimiento 
-          ? new Date((estadisticas[0] as any).ultimoMovimiento).toISOString() 
-          : null,
-        promedioDiasMovimiento: Math.round((estadisticas[0] as any)?.promedioDiasMovimiento || 0)
-      },
-      equiposSimilares,
-      metadatos: {
-        consultadoEn: new Date().toISOString(),
-        version: '1.0'
       }
-    };
-
-    return NextResponse.json({
-      success: true,
-      data: response,
-      message: 'Detalles del equipo obtenidos exitosamente'
     } as ApiResponse<any>, { status: 200 });
 
   } catch (error) {
     console.error('Error obteniendo detalles del equipo:', error);
     return NextResponse.json({
       success: false,
-      error: 'Error interno del servidor'
+      error: 'Error al obtener los detalles del equipo',
+      details: error instanceof Error ? error.message : 'Error desconocido'
     } as ApiResponse<any>, { status: 500 });
   }
 }
@@ -269,7 +270,7 @@ export async function PUT(
     const equipoExistente = await executeQuery(
       'SELECT no_serie FROM GostCAM.Equipo WHERE no_serie = ?',
       [no_serie]
-    ) as any[];
+    );
 
     if (!equipoExistente || equipoExistente.length === 0) {
       return NextResponse.json({
@@ -308,9 +309,9 @@ export async function PUT(
     updateParams.push(no_serie);
 
     // Ejecutar la actualización
-    const result = await executeQuery(updateQuery, updateParams) as any;
+    const result = await executeQuery(updateQuery, updateParams);
 
-    if (!result || result.affectedRows === 0) {
+    if (!result || (result as any).affectedRows === 0) {
       return NextResponse.json({
         success: false,
         error: 'No se pudo actualizar el equipo'
@@ -343,7 +344,7 @@ export async function PUT(
       INNER JOIN GostCAM.PosicionEquipo p ON e.idPosicion = p.idPosicion
       INNER JOIN GostCAM.Sucursales s ON p.idCentro = s.idCentro
       WHERE e.no_serie = ?
-    `, [no_serie]) as any[];
+    `, [no_serie]);
 
     return NextResponse.json({
       success: true,
@@ -353,81 +354,6 @@ export async function PUT(
 
   } catch (error) {
     console.error('Error actualizando equipo:', error);
-    return NextResponse.json({
-      success: false,
-      error: 'Error interno del servidor',
-      details: error instanceof Error ? error.message : 'Error desconocido'
-    } as ApiResponse<any>, { status: 500 });
-  }
-}
-
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ no_serie: string }> }
-) {
-  try {
-    const { no_serie } = await params;
-
-    if (!no_serie) {
-      return NextResponse.json({
-        success: false,
-        error: 'Número de serie es requerido'
-      } as ApiResponse<any>, { status: 400 });
-    }
-
-    // Verificar que el equipo existe
-    const equipoExistente = await executeQuery(
-      'SELECT no_serie FROM GostCAM.Equipo WHERE no_serie = ?',
-      [no_serie]
-    ) as any[];
-
-    if (!equipoExistente || equipoExistente.length === 0) {
-      return NextResponse.json({
-        success: false,
-        error: 'Equipo no encontrado'
-      } as ApiResponse<any>, { status: 404 });
-    }
-
-    // Verificar que no tenga movimientos activos
-    const movimientosActivos = await executeQuery(
-      'SELECT COUNT(*) as count FROM GostCAM.MovimientoInv WHERE no_serie = ? AND fechaFin IS NULL',
-      [no_serie]
-    ) as any[];
-
-    if (movimientosActivos[0]?.count > 0) {
-      return NextResponse.json({
-        success: false,
-        error: 'No se puede eliminar el equipo: tiene movimientos activos'
-      } as ApiResponse<any>, { status: 400 });
-    }
-
-    // Eliminar el equipo (soft delete agregando fecha de baja)
-    const deleteQuery = `
-      UPDATE GostCAM.Equipo 
-      SET 
-        idEstatus = (SELECT idEstatus FROM GostCAM.EstatusEquipo WHERE estatus = 'Baja' LIMIT 1),
-        fecha_actualizacion = NOW(),
-        observaciones = CONCAT(COALESCE(observaciones, ''), ' - Equipo dado de baja el ', NOW())
-      WHERE no_serie = ?
-    `;
-
-    const result = await executeQuery(deleteQuery, [no_serie]) as any;
-
-    if (!result || result.affectedRows === 0) {
-      return NextResponse.json({
-        success: false,
-        error: 'No se pudo eliminar el equipo'
-      } as ApiResponse<any>, { status: 500 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: { deleted: true, no_serie },
-      message: 'Equipo eliminado exitosamente'
-    } as ApiResponse<{ deleted: boolean; no_serie: string }>, { status: 200 });
-
-  } catch (error) {
-    console.error('Error eliminando equipo:', error);
     return NextResponse.json({
       success: false,
       error: 'Error interno del servidor',

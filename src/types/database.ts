@@ -49,13 +49,12 @@ export interface Usuario {
   fecha_actualizacion: Date;
 }
 
-export interface Layout {
-  idLayout: number;
+export interface PosicionEquipo {
+  idPosicion: number;
   idCentro: string;
-  Longitud: number;
-  Latitud: number;
-  NombreArea: string | null;
+  NombrePosicion: string;
   Descripcion: string | null;
+  TipoArea: 'INTERIOR' | 'EXTERIOR' | 'ALMACEN' | 'OFICINA' | 'SALA_SERVIDORES' | 'TALLER' | 'ESTACIONAMIENTO' | 'AREA_PUBLICA' | 'BODEGA' | 'OTRO';
 }
 
 export interface TipoMovimiento {
@@ -82,7 +81,7 @@ export interface Equipo {
   numeroActivo: string;
   fechaAlta: Date;
   idUsuarios: number;
-  idLayout: number;
+  idPosicion: number;
   idEstatus: number;
   fecha_creacion: Date;
   fecha_actualizacion: Date;
@@ -196,7 +195,7 @@ export interface EquipoCreateRequest {
   idTipoEquipo: number;
   numeroActivo: string;
   idUsuarios: number;
-  idLayout: number;
+  idPosicion: number;
   idEstatus: number;
   idCentro?: string; // Opcional ya que no existe en la tabla equipo
 }
@@ -280,7 +279,7 @@ export interface FormEquipo {
   idTipoEquipo: string;
   numeroActivo: string;
   idUsuarios: string;
-  idLayout: string;
+  idPosicion: string;
   idEstatus: string;
 }
 

@@ -14,13 +14,13 @@ export async function GET(request: NextRequest) {
       success: true,
       data: catalogos,
       message: 'Catálogos obtenidos exitosamente'
-    } as ApiResponse<any>, { status: 200 });
+    } as ApiResponse<Record<string, unknown[]>>, { status: 200 });
 
   } catch (error) {
     console.error('Error obteniendo catálogos:', error);
     return NextResponse.json({
       success: false,
       error: 'Error interno del servidor'
-    } as ApiResponse<any>, { status: 500 });
+    } as ApiResponse<Record<string, unknown[]>>, { status: 500 });
   }
 }

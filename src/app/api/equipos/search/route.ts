@@ -6,6 +6,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database';
 import { VistaEquipoCompleto, ApiResponse } from '@/types/database';
 
+// Interfaces para tipado de búsqueda
+interface CountResult {
+  total: number;
+}
+
+// Usar la interfaz existente de VistaEquipoCompleto para consistencia
+// interface EquipoSearchResult extends VistaEquipoCompleto {}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -24,8 +32,8 @@ export async function POST(request: NextRequest) {
       pagina = 1
     } = body;
 
-    let whereConditions = [];
-    let queryParams = [];
+    const whereConditions = [];
+    const queryParams = [];
 
     // Construcción dinámica de la consulta WHERE
     if (texto) {
@@ -140,11 +148,11 @@ export async function POST(request: NextRequest) {
     `;
 
     // Ejecutar consulta de conteo
-    const countResult = await executeQuery(countQuery, queryParams);
-    const total = countResult[0]?.total || 0;
+    const countResult = await executeQuery<CountResult>(countQuery, queryParams);
+    const total = Number(countResult[0]?.total || 0);
 
     // Ejecutar consulta principal
-    const equipos = await executeQuery(mainQuery, [...queryParams, limite, offset]);
+    const equipos = await executeQuery<VistaEquipoCompleto>(mainQuery, [...queryParams, limite, offset]);
 
     // Calcular información de paginación
     const totalPaginas = Math.ceil(total / limite);

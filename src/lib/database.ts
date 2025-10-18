@@ -3,6 +3,7 @@
 // =============================================
 
 import mysql from 'mysql2/promise';
+import { VistaEquipoCompleto, VistaMovimientoDetallado } from '@/types/database';
 
 // Configuración de la conexión a la base de datos
 const dbConfig = {
@@ -35,9 +36,9 @@ export const getConnection = async () => {
 };
 
 // Función para ejecutar queries con manejo de errores
-export const executeQuery = async <T = any>(
+export const executeQuery = async <T = Record<string, unknown>>(
   query: string,
-  params: any[] = []
+  params: (string | number | Date | null | undefined)[] = []
 ): Promise<T[]> => {
   let connection;
   try {
@@ -57,9 +58,9 @@ export const executeQuery = async <T = any>(
 };
 
 // Función para ejecutar procedimientos almacenados
-export const callStoredProcedure = async <T = any>(
+export const callStoredProcedure = async <T = Record<string, unknown>>(
   procedureName: string,
-  params: any[] = []
+  params: (string | number | Date | null | undefined)[] = []
 ): Promise<T[]> => {
   const placeholders = params.map(() => '?').join(', ');
   const query = `CALL ${procedureName}(${placeholders})`;
@@ -110,9 +111,9 @@ export const getEquiposCompletos = async (filters?: {
   estatus?: string;
   usuario?: string;
   busqueda?: string;
-}) => {
-  let query = 'SELECT * FROM VistaEquiposCompletos';
-  const params: any[] = [];
+}): Promise<VistaEquipoCompleto[]> => {
+  let query = 'SELECT * FROM GostCAM.VistaEquiposCompletos';
+  const params: (string | number | Date | null | undefined)[] = [];
   const conditions: string[] = [];
 
   if (filters) {
@@ -144,7 +145,7 @@ export const getEquiposCompletos = async (filters?: {
 
   query += ' ORDER BY fechaAlta DESC';
 
-  return executeQuery(query, params);
+  return executeQuery<VistaEquipoCompleto>(query, params);
 };
 
 export const getMovimientosDetallados = async (filters?: {
@@ -154,9 +155,9 @@ export const getMovimientosDetallados = async (filters?: {
   estatusMovimiento?: string;
   fechaDesde?: string;
   fechaHasta?: string;
-}) => {
+}): Promise<VistaMovimientoDetallado[]> => {
   let query = 'SELECT * FROM VistaMovimientosDetallados';
-  const params: any[] = [];
+  const params: (string | number | Date | null | undefined)[] = [];
   const conditions: string[] = [];
 
   if (filters) {
@@ -192,11 +193,43 @@ export const getMovimientosDetallados = async (filters?: {
 
   query += ' ORDER BY fecha DESC';
 
-  return executeQuery(query, params);
+  return executeQuery<VistaMovimientoDetallado>(query, params);
 };
 
 export const getInventarioPorEstatus = async () => {
   return executeQuery('SELECT * FROM VistaInventarioPorEstatus ORDER BY estatus, TipoEquipo');
+};
+
+// Función para obtener todos los catálogos del sistema
+export const getCatalogos = async () => {
+  try {
+    const [estados, municipios, zonas, nivelesUsuario, tiposEquipo, estatusEquipos, tiposMovimiento, sucursales, posiciones] = await Promise.all([
+      executeQuery('SELECT * FROM Estados ORDER BY Estado'),
+      executeQuery('SELECT * FROM Municipios ORDER BY Municipio'),
+      executeQuery('SELECT * FROM Zonas ORDER BY Zona'),
+      executeQuery('SELECT * FROM NivelUsuarios ORDER BY NivelUsuario'),
+      executeQuery('SELECT * FROM TiposEquipo ORDER BY nombreTipo'),
+      executeQuery('SELECT * FROM EstatusEquipos ORDER BY estatus'),
+      executeQuery('SELECT * FROM TiposMovimiento ORDER BY tipoMovimiento'),
+      executeQuery('SELECT * FROM Sucursales ORDER BY Sucursal'),
+      executeQuery('SELECT * FROM PosicionesEquipo ORDER BY NombrePosicion')
+    ]);
+
+    return {
+      estados,
+      municipios,
+      zonas,
+      nivelesUsuario,
+      tiposEquipo,
+      estatusEquipos,
+      tiposMovimiento,
+      sucursales,
+      posiciones
+    };
+  } catch (error) {
+    console.error('Error obteniendo catálogos:', error);
+    throw error;
+  }
 };
 
 export const getHistorialMovimientos = async (no_serie?: string) => {
@@ -206,33 +239,5 @@ export const getHistorialMovimientos = async (no_serie?: string) => {
   return executeQuery('SELECT * FROM VistaHistorialMovimientos ORDER BY fecha DESC LIMIT 100');
 };
 
-// Funciones para obtener datos de catálogos
-export const getCatalogos = async () => {
-  const [estados, municipios, zonas, nivelesUsuario, tiposEquipo, estatusEquipo, tiposMovimiento, sucursales, usuarios, layouts] = await Promise.all([
-    executeQuery('SELECT * FROM Estados ORDER BY Estado'),
-    executeQuery('SELECT * FROM Municipios ORDER BY Municipio'),
-    executeQuery('SELECT * FROM Zonas ORDER BY Zona'),
-    executeQuery('SELECT * FROM nivelusuarios ORDER BY idNivelUsuario'),
-    executeQuery('SELECT * FROM TipoEquipo ORDER BY nombreTipo'),
-    executeQuery('SELECT * FROM EstatusEquipo ORDER BY estatus'),
-    executeQuery('SELECT * FROM TipoMovimiento ORDER BY tipoMovimiento'),
-    executeQuery('SELECT * FROM Sucursales ORDER BY Sucursal'),
-    executeQuery('SELECT idUsuarios, NombreUsuario, NivelUsuario, Correo, Estatus FROM Usuarios WHERE Estatus = 1 ORDER BY NombreUsuario'),
-    executeQuery('SELECT * FROM Layout ORDER BY idCentro, NombreArea')
-  ]);
-
-  return {
-    estados,
-    municipios,
-    zonas,
-    nivelesUsuario,
-    tiposEquipo,
-    estatusEquipo,
-    tiposMovimiento,
-    sucursales,
-    usuarios,
-    layouts
-  };
-};
 
 export default pool;

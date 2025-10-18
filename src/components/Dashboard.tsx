@@ -8,14 +8,13 @@ import React, { useEffect, useState } from 'react';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { useApp } from '@/contexts/AppContext';
-import EquiposAvanzados from './EquiposAvanzados';
 
 // Registrar componentes de Chart.js
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
 export default function Dashboard() {
   const { state, loadDashboardStats, testAltaEquipo } = useApp();
-  const [vistaActual, setVistaActual] = useState<'resumen' | 'equipos'>('resumen');
+  const [vistaActual, setVistaActual] = useState<'resumen'>('resumen');
 
   useEffect(() => {
     if (state.isAuthenticated) {
@@ -141,40 +140,6 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header mejorado */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Dashboard GostCAM</h1>
-              <p className="text-gray-600">Resumen del estado del inventario</p>
-            </div>
-            <div className="flex space-x-1">
-              <button
-                onClick={() => setVistaActual('resumen')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  vistaActual === 'resumen'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <i className="fas fa-chart-dashboard mr-2"></i>Resumen
-              </button>
-              <button
-                onClick={() => setVistaActual('equipos')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  vistaActual === 'equipos'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <i className="fas fa-desktop mr-2"></i>Gestión de Equipos
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Contenido dinámico según la vista */}
       {vistaActual === 'resumen' && (
         <>
@@ -189,68 +154,7 @@ export default function Dashboard() {
                 <i className="fas fa-sync-alt mr-2"></i>
                 Actualizar
               </button>
-              {/* Botones de test solo para administradores */}
-              {state.user?.NivelUsuario === 1 && (
-                <>
-                  <button
-                    onClick={async () => {
-                      try {
-                        const response = await fetch('/api/setup-data', { method: 'POST' });
-                        const data = await response.json();
-                        if (data.success) {
-                          alert('✅ Datos iniciales configurados correctamente');
-                          loadDashboardStats();
-                        } else {
-                          alert('❌ Error: ' + data.error);
-                        }
-                      } catch (error) {
-                        alert('❌ Error de conexión');
-                      }
-                    }}
-                    className="bg-green-600 text-white px-3 py-2 rounded-md hover:bg-green-700 transition-colors text-sm"
-                  >
-                    🔧 Setup DB
-                  </button>
-                  <button
-                    onClick={async () => {
-                      const success = await testAltaEquipo();
-                      if (success) {
-                        alert('✅ Equipo creado exitosamente!');
-                      } else {
-                        alert('❌ Error creando equipo. Ver consola.');
-                      }
-                    }}
-                    className="bg-purple-600 text-white px-3 py-2 rounded-md hover:bg-purple-700 transition-colors text-sm"
-                  >
-                    🧪 Test Alta
-                  </button>
-                  <button
-                    onClick={async () => {
-                      try {
-                        const response = await fetch('/api/verify-equipos');
-                        const data = await response.json();
-                        if (data.success) {
-                          const stats = data.data.estadisticas;
-                          const testCount = data.data.equipos_test.length;
-                          console.log('📋 Verificación de equipos:', data.data);
-                          alert(`✅ Verificación completada!\n\n` +
-                                `📊 Total equipos: ${stats.total_equipos}\n` +
-                                `🧪 Equipos de prueba: ${testCount}\n` +
-                                `📦 Equipos reales: ${stats.equipos_reales}\n\n` +
-                                `Ver consola para detalles completos.`);
-                        } else {
-                          alert('❌ Error: ' + data.error);
-                        }
-                      } catch (error) {
-                        alert('❌ Error de conexión');
-                      }
-                    }}
-                    className="bg-blue-500 text-white px-3 py-2 rounded-md hover:bg-blue-600 transition-colors text-sm"
-                  >
-                    📋 Verificar DB
-                  </button>
-                </>
-              )}
+
             </div>
           </div>
 
@@ -386,8 +290,7 @@ export default function Dashboard() {
         </>
       )}
 
-      {/* Vista de Gestión de Equipos */}
-      {vistaActual === 'equipos' && <EquiposAvanzados />}
+
     </div>
   );
 }

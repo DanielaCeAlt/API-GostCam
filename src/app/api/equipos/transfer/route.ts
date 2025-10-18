@@ -255,8 +255,8 @@ export async function GET(request: NextRequest) {
     const urgencia = searchParams.get('urgencia');
     const tipo = searchParams.get('tipo');
 
-    let whereConditions = ['em.nombre = ?'];
-    let queryParams = [estatus];
+    const whereConditions = ['em.nombre = ?'];
+    const queryParams = [estatus];
 
     if (sucursal) {
       whereConditions.push('(mi.origen_idCentro = ? OR mi.destino_idCentro = ?)');

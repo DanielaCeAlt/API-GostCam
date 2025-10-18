@@ -6,6 +6,36 @@ import { NextRequest, NextResponse } from 'next/server';
 import { executeQuery } from '@/lib/database';
 import { ApiResponse } from '@/types/database';
 
+// Interfaces para tipado de mantenimiento
+interface MantenimientoResult {
+  tecnico: string;
+  estimacion_horas: number | null;
+  horasReales: number | null;
+  tipo_mantenimiento: 'PREVENTIVO' | 'CORRECTIVO' | 'URGENTE';
+  prioridad_mantenimiento: string;
+  fecha: string;
+  fechaFin: string | null;
+  diasTranscurridos: number;
+  // Agregar otras propiedades según la query
+  no_serie: string;
+  nombreEquipo: string;
+  tipoEquipo: string;
+  sucursal: string;
+  descripcion: string;
+  observaciones: string;
+  estatusMantenimiento: string;
+}
+
+interface EstadisticaTecnico {
+  tecnico: string;
+  totalMantenimientos: number;
+  horasEstimadas: number;
+  horasReales: number;
+  preventivos: number;
+  correctivos: number;
+  urgentes: number;
+}
+
 // POST: Programar mantenimiento
 export async function POST(request: NextRequest) {
   try {
@@ -232,8 +262,8 @@ export async function GET(request: NextRequest) {
     const fechaDesde = searchParams.get('fechaDesde');
     const fechaHasta = searchParams.get('fechaHasta');
 
-    let whereConditions = ['em.nombre = ?'];
-    let queryParams = [estatus];
+    const whereConditions = ['em.nombre = ?'];
+    const queryParams = [estatus];
 
     if (sucursal) {
       whereConditions.push('s.id = ?');
@@ -302,7 +332,7 @@ export async function GET(request: NextRequest) {
         mi.fecha ASC
     `;
 
-    const mantenimientos = await executeQuery(mantenimientosQuery, queryParams);
+    const mantenimientos = await executeQuery<MantenimientoResult>(mantenimientosQuery, queryParams);
 
     // Agrupar por técnico para estadísticas
     const estadisticasPorTecnico = mantenimientos.reduce((acc, m) => {
@@ -327,7 +357,7 @@ export async function GET(request: NextRequest) {
       if (m.tipo_mantenimiento === 'URGENTE') acc[m.tecnico].urgentes++;
       
       return acc;
-    }, {} as any);
+    }, {} as Record<string, EstadisticaTecnico>);
 
     return NextResponse.json({
       success: true,

@@ -229,7 +229,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       
       const data = await apiService.getDashboardStats();
 
-      if (data.success) {
+      if (data.success && data.data) {
         dispatch({ type: 'SET_DASHBOARD_STATS', payload: data.data });
       } else {
         dispatch({ type: 'SET_ERROR', payload: data.error || 'Error cargando dashboard' });
@@ -254,7 +254,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       
       const data = await apiService.getEquipos(filters);
 
-      if (data.success) {
+      if (data.success && data.data) {
         dispatch({ type: 'SET_EQUIPOS', payload: data.data });
       } else {
         dispatch({ type: 'SET_ERROR', payload: data.error || 'Error cargando equipos' });
@@ -279,7 +279,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       
       const data = await apiService.getMovimientos(filters);
 
-      if (data.success) {
+      if (data.success && data.data) {
         dispatch({ type: 'SET_MOVIMIENTOS', payload: data.data });
       } else {
         dispatch({ type: 'SET_ERROR', payload: data.error || 'Error cargando movimientos' });
@@ -344,7 +344,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         idTipoEquipo: 1,
         numeroActivo: `ACT-${Date.now()}`,
         idUsuarios: 1,
-        idLayout: 1,
+        idPosicion: 1,
         idEstatus: 1
       };
 
