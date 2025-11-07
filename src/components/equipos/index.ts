@@ -3,6 +3,9 @@ export { default as EquiposManager } from './EquiposManager';
 export { default as EquiposList } from './EquiposList';
 export { default as EquiposBusqueda } from './EquiposBusqueda';
 export { default as EquiposAlta } from './EquiposAlta';
+export { default as EquiposDashboard } from './EquiposDashboard';
+export { default as EquiposEditar } from './EquiposEditar';
+export { default as ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 // Re-exportar hooks relacionados
 export { useEquipos } from '../../hooks/useEquipos';

@@ -9,15 +9,20 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Verificando equipos en la base de datos...');
 
-    // Consultar equipos de prueba creados
+    // Obtener los últimos equipos de prueba
     const equipos = await executeQuery(`
-      SELECT e.*, 
-             t.nombreTipo as tipoEquipo,
-             est.estatus as nombreEstatus,
-             u.NombreUsuario
+      SELECT 
+        e.no_serie, 
+        e.nombreEquipo,
+        e.modelo,
+        e.numeroActivo,
+        e.fechaAlta,
+        te.nombreTipo as TipoEquipo,
+        ee.estatus as EstatusEquipo,
+        u.NombreUsuario as UsuarioAsignado
       FROM equipo e
-      LEFT JOIN tipoequipo t ON e.idTipoEquipo = t.idTipoEquipo
-      LEFT JOIN estatusequipo est ON e.idEstatus = est.idEstatus
+      LEFT JOIN tipoequipo te ON e.idTipoEquipo = te.idTipoEquipo
+      LEFT JOIN estatusequipo ee ON e.idEstatus = ee.idEstatus
       LEFT JOIN usuarios u ON e.idUsuarios = u.idUsuarios
       WHERE e.no_serie LIKE 'TEST-%'
       ORDER BY e.no_serie DESC

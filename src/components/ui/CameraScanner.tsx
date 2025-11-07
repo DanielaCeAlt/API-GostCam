@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
-import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { Html5QrcodeScanner, Html5QrcodeSupportedFormats, Html5QrcodeScannerState, Html5QrcodeScanType } from 'html5-qrcode';
 import Tesseract from 'tesseract.js';
 
 interface CameraScannerProps {
@@ -18,6 +18,7 @@ export default function CameraScanner({ onResult, onClose, mode, placeholder = "
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [scannerConfig, setScannerConfig] = useState<'standard' | 'enhanced'>('enhanced');
   
   const webcamRef = useRef<Webcam>(null);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
@@ -51,28 +52,47 @@ export default function CameraScanner({ onResult, onClose, mode, placeholder = "
   // Inicializar scanner QR/Barcode
   useEffect(() => {
     if (currentMode === 'qr' && qrReaderRef.current && hasPermission) {
+      // Configuración mejorada para códigos de barras
+      const enhancedConfig = {
+        fps: 10,
+        qrbox: { width: 300, height: 200 },
+        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true
+        },
+        rememberLastUsedCamera: true,
+        showTorchButtonIfSupported: true,
+        showZoomSliderIfSupported: true,
+        defaultZoomValueIfSupported: 1.5,
+        aspectRatio: 1.333,
+        disableFlip: false,
+      };
+
+      // Configuración estándar (más compatible)
+      const standardConfig = {
+        fps: 5,
+        qrbox: { width: 250, height: 150 },
+        showTorchButtonIfSupported: true,
+        showZoomSliderIfSupported: false,
+        aspectRatio: 1.0,
+      };
+
+      const config = scannerConfig === 'enhanced' ? enhancedConfig : standardConfig;
+      
       const scanner = new Html5QrcodeScanner(
         'qr-reader',
-        {
-          fps: 10,
-          qrbox: { width: 300, height: 200 },
-          supportedScanTypes: [
-            Html5QrcodeSupportedFormats.QR_CODE,
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.CODE_39,
-            Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.EAN_8,
-          ],
-          showTorchButtonIfSupported: true,
-          showZoomSliderIfSupported: true,
-        },
-        false
+        config,
+        /* verbose= */ false
       );
 
       scanner.render(
         (decodedText, decodedResult) => {
           console.log('Código escaneado:', decodedText);
-          onResult(decodedText, decodedResult.result.format.formatName.includes('QR') ? 'qr' : 'barcode');
+          // Verificar si es QR basándose en el texto del resultado
+          const isQR = decodedResult?.result?.format?.formatName?.includes('QR') || 
+                      decodedText.length > 50 || // QR codes suelen ser más largos
+                      decodedText.includes('http'); // URLs comunes en QR
+          onResult(decodedText, isQR ? 'qr' : 'barcode');
           scanner.clear();
         },
         (errorMessage) => {
@@ -87,7 +107,7 @@ export default function CameraScanner({ onResult, onClose, mode, placeholder = "
         scanner.clear().catch(console.error);
       };
     }
-  }, [currentMode, hasPermission, onResult]);
+  }, [currentMode, hasPermission, onResult, scannerConfig]);
 
   // Función para OCR
   const performOCR = useCallback(async () => {
@@ -112,7 +132,6 @@ export default function CameraScanner({ onResult, onClose, mode, placeholder = "
               setProgress(Math.round(m.progress * 100));
             }
           },
-          tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-',
         }
       );
 
@@ -135,6 +154,12 @@ export default function CameraScanner({ onResult, onClose, mode, placeholder = "
   // Cambiar modo de escaneo
   const switchMode = () => {
     setCurrentMode(prev => prev === 'qr' ? 'ocr' : 'qr');
+    setError(null);
+  };
+
+  // Cambiar configuración del scanner
+  const switchScannerConfig = () => {
+    setScannerConfig(prev => prev === 'enhanced' ? 'standard' : 'enhanced');
     setError(null);
   };
 
@@ -187,6 +212,15 @@ export default function CameraScanner({ onResult, onClose, mode, placeholder = "
             {currentMode === 'qr' ? 'Escanear Código' : 'Reconocer Texto'}
           </h3>
           <div className="flex items-center space-x-2">
+            {currentMode === 'qr' && (
+              <button
+                onClick={switchScannerConfig}
+                className="px-2 py-1 text-xs bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 rounded-md hover:bg-orange-200 dark:hover:bg-orange-800 transition-colors"
+                title="Cambiar configuración si no detecta códigos"
+              >
+                {scannerConfig === 'enhanced' ? 'Modo Básico' : 'Modo Avanzado'}
+              </button>
+            )}
             {mode === 'auto' && (
               <button
                 onClick={switchMode}
@@ -295,10 +329,24 @@ export default function CameraScanner({ onResult, onClose, mode, placeholder = "
             </h4>
             <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1">
               <li>• Asegúrate de tener buena iluminación</li>
-              <li>• Mantén la cámara estable</li>
-              <li>• El texto debe estar claro y bien enfocado</li>
-              {currentMode === 'qr' && <li>• Para códigos QR/barras, centráloos en el área de escaneo</li>}
-              {currentMode === 'ocr' && <li>• Para texto, posiciónalo horizontal y sin inclinación</li>}
+              <li>• Mantén la cámara estable y sin temblores</li>
+              {currentMode === 'qr' && (
+                <>
+                  <li>• Centra el código en el área de escaneo</li>
+                  <li>• Para códigos de barras: mantén horizontales y completos</li>
+                  <li>• Ajusta la distancia si no detecta (más cerca/lejos)</li>
+                  <li>• Usa la linterna si hay poca luz</li>
+                  <li>• Si no detecta, prueba el "Modo Básico" arriba</li>
+                  <li>• Soporta: Code 128, Code 39, EAN-13, EAN-8, QR</li>
+                </>
+              )}
+              {currentMode === 'ocr' && (
+                <>
+                  <li>• Posiciona el texto horizontal y sin inclinación</li>
+                  <li>• El texto debe estar claro y bien enfocado</li>
+                  <li>• Evita reflejos y sombras sobre el texto</li>
+                </>
+              )}
             </ul>
           </div>
         </div>

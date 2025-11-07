@@ -43,8 +43,15 @@ export default function EquiposBusqueda({ onResultados }: EquiposBusquedaProps) 
       fechaAltaHasta: filtrosAvanzados.fechaAltaHasta
     };
     
-    await buscarEquipos(filtrosBusqueda);
-    onResultados?.(equipos);
+    try {
+      const resultados = await buscarEquipos(filtrosBusqueda);
+      
+      if (onResultados) {
+        onResultados(resultados || []);
+      }
+    } catch (error) {
+      console.error('Error en búsqueda:', error);
+    }
   };
 
   const handleLimpiarFiltros = () => {
@@ -118,7 +125,7 @@ export default function EquiposBusqueda({ onResultados }: EquiposBusquedaProps) 
               type="text"
               value={filtrosAvanzados.texto}
               onChange={(e) => handleFiltroChange('texto', e.target.value)}
-              placeholder="Serie, nombre, modelo..."
+              placeholder="Buscar en serie, nombre, tipo, estatus, sucursal, usuario..."
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -132,7 +139,7 @@ export default function EquiposBusqueda({ onResultados }: EquiposBusquedaProps) 
             >
               <option value="">Todos los tipos</option>
               {tiposEquipo.map((tipo) => (
-                <option key={tipo.idTipoEquipo} value={tipo.idTipoEquipo.toString()}>
+                <option key={tipo.idTipoEquipo} value={tipo.nombre}>
                   {tipo.nombre}
                 </option>
               ))}
@@ -148,7 +155,7 @@ export default function EquiposBusqueda({ onResultados }: EquiposBusquedaProps) 
             >
               <option value="">Todos los estatus</option>
               {estatusEquipo.map((estatus) => (
-                <option key={estatus.idEstatus} value={estatus.idEstatus.toString()}>
+                <option key={estatus.idEstatus} value={estatus.nombre}>
                   {estatus.nombre}
                 </option>
               ))}
@@ -167,7 +174,7 @@ export default function EquiposBusqueda({ onResultados }: EquiposBusquedaProps) 
             >
               <option value="">Todas las sucursales</option>
               {sucursales.map((sucursal) => (
-                <option key={sucursal.idCentro} value={sucursal.idCentro}>
+                <option key={sucursal.idCentro} value={sucursal.nombre}>
                   {sucursal.nombre}
                 </option>
               ))}
@@ -183,7 +190,7 @@ export default function EquiposBusqueda({ onResultados }: EquiposBusquedaProps) 
             >
               <option value="">Todos los usuarios</option>
               {usuarios.map((usuario) => (
-                <option key={usuario.idUsuarios} value={usuario.idUsuarios.toString()}>
+                <option key={usuario.idUsuarios} value={usuario.NombreUsuario}>
                   {usuario.NombreUsuario}
                 </option>
               ))}

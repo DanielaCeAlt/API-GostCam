@@ -4,10 +4,13 @@ import React, { useState } from 'react';
 import EquiposList from './EquiposList';
 import EquiposBusqueda from './EquiposBusqueda';
 import EquiposAlta from './EquiposAlta';
+import EquiposDashboard from './EquiposDashboard';
+import EquiposEditar from './EquiposEditar';
+import ConfirmDeleteModal from './ConfirmDeleteModal';
 import { apiService } from '@/lib/apiService';
 
 // Tipos de vista disponibles
-type VistaActual = 'lista' | 'busqueda' | 'alta' | 'historial' | 'cambiarUbicacion' | 'mantenimientoEquipo';
+type VistaActual = 'lista' | 'busqueda' | 'alta' | 'historial' | 'cambiarUbicacion' | 'mantenimientoEquipo' | 'dashboard' | 'editar';
 
 interface EquiposManagerProps {
   vistaInicial?: VistaActual;
@@ -15,12 +18,22 @@ interface EquiposManagerProps {
 
 export default function EquiposManager({ vistaInicial = 'lista' }: EquiposManagerProps) {
   const [vistaActual, setVistaActual] = useState<VistaActual>(vistaInicial);
-  const [equipoSeleccionado, setEquipoSeleccionado] = useState<string | null>(null);
+  // Estado para equipos seleccionados y operaciones
+  const [equipoSeleccionado, setEquipoSeleccionado] = useState<string>('');
+  const [equipoParaEditar, setEquipoParaEditar] = useState<any>(null);
+  const [cargandoEquipo, setCargandoEquipo] = useState(false);
+  const [resultadosBusqueda, setResultadosBusqueda] = useState<any[]>([]);
+  
+  // Estados para modal de eliminación
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [equipoAEliminar, setEquipoAEliminar] = useState<{no_serie: string, nombreEquipo: string} | null>(null);
+  const [eliminandoEquipo, setEliminandoEquipo] = useState(false);
+  const [refreshList, setRefreshList] = useState(0);
 
   // Navegación entre vistas
   const cambiarVista = (nuevaVista: VistaActual) => {
     setVistaActual(nuevaVista);
-    setEquipoSeleccionado(null);
+    setEquipoSeleccionado('');
   };
 
   // Callbacks para interacción entre componentes
@@ -28,16 +41,40 @@ export default function EquiposManager({ vistaInicial = 'lista' }: EquiposManage
     setEquipoSeleccionado(noSerie);
   };
 
+  const handleResultadosBusqueda = (equipos: any[]) => {
+    setResultadosBusqueda([...equipos]);
+  };
+
   const handleVerDetalles = (noSerie: string) => {
     setEquipoSeleccionado(noSerie);
-    // Aquí podrías abrir un modal o cambiar a vista de detalles
-    console.log('Ver detalles de:', noSerie);
+    setVistaActual('dashboard');
+  };
+
+  // Función para cargar datos del equipo para edición
+  const cargarEquipoParaEditar = async (noSerie: string) => {
+    setCargandoEquipo(true);
+    try {
+      const response = await fetch(`/api/equipos/${noSerie}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setEquipoParaEditar(data.data.equipo);
+        setEquipoSeleccionado(noSerie);
+        setVistaActual('editar');
+      } else {
+        console.error('Error cargando equipo:', data.error);
+        alert('Error cargando los datos del equipo');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error de conexión');
+    } finally {
+      setCargandoEquipo(false);
+    }
   };
 
   const handleEditarEquipo = (noSerie: string) => {
-    setEquipoSeleccionado(noSerie);
-    // Aquí podrías cambiar a vista de edición
-    console.log('Editar equipo:', noSerie);
+    cargarEquipoParaEditar(noSerie);
   };
 
   const handleAltaExitosa = () => {
@@ -52,23 +89,46 @@ export default function EquiposManager({ vistaInicial = 'lista' }: EquiposManage
 
   // =================== NUEVAS FUNCIONES DE ACCIÓN ===================
   
-  const handleEliminarEquipo = async (noSerie: string) => {
-    if (!confirm(`⚠️ ¿Estás seguro de eliminar el equipo ${noSerie}?\n\nEsta acción no se puede deshacer.`)) {
-      return;
-    }
+  const handleEliminarEquipo = async (noSerie: string, nombreEquipo?: string) => {
+    // Mostrar modal de confirmación
+    setEquipoAEliminar({ 
+      no_serie: noSerie, 
+      nombreEquipo: nombreEquipo || 'Equipo sin nombre' 
+    });
+    setShowDeleteModal(true);
+  };
+
+  const confirmarEliminacion = async () => {
+    if (!equipoAEliminar) return;
     
+    setEliminandoEquipo(true);
     try {
-      const response = await apiService.delete(`/api/equipos/${noSerie}`);
+      const response = await apiService.delete(`/api/equipos/${equipoAEliminar.no_serie}`);
       if (response.success) {
-        alert('✅ Equipo eliminado exitosamente');
-        // Aquí podrías recargar la lista o actualizar el estado
+        // Cerrar modal
+        setShowDeleteModal(false);
+        setEquipoAEliminar(null);
+        
+        // Forzar recarga de la lista
+        setRefreshList(prev => prev + 1);
+        
+        // Mostrar notificación en consola
+        console.log('✅ Equipo eliminado exitosamente:', response.message);
       } else {
+        console.error('❌ Error eliminando equipo:', response.error);
         alert('❌ Error: ' + response.error);
       }
     } catch (error) {
       console.error('Error eliminando equipo:', error);
-      alert('❌ Error de conexión');
+      alert('❌ Error de conexión al eliminar el equipo');
+    } finally {
+      setEliminandoEquipo(false);
     }
+  };
+
+  const cancelarEliminacion = () => {
+    setShowDeleteModal(false);
+    setEquipoAEliminar(null);
   };
 
   const handleVerHistorial = (noSerie: string) => {
@@ -134,9 +194,63 @@ export default function EquiposManager({ vistaInicial = 'lista' }: EquiposManage
 
       case 'busqueda':
         return (
-          <EquiposBusqueda
-            onResultados={(equipos) => console.log('Resultados:', equipos.length)}
-          />
+          <div>
+            <EquiposBusqueda
+              onResultados={handleResultadosBusqueda}
+            />
+            
+            {resultadosBusqueda.length > 0 && (
+              <div className="mt-6">
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">
+                    Resultados de Búsqueda
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    {resultadosBusqueda.map((equipo, index) => (
+                      <div key={equipo.no_serie || index} className="border border-gray-200 rounded-lg p-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <strong>No. Serie:</strong> {equipo.no_serie}
+                          </div>
+                          <div>
+                            <strong>Nombre:</strong> {equipo.nombreEquipo}
+                          </div>
+                          <div>
+                            <strong>Tipo:</strong> {equipo.TipoEquipo}
+                          </div>
+                          <div>
+                            <strong>Estatus:</strong> {equipo.EstatusEquipo}
+                          </div>
+                          <div>
+                            <strong>Sucursal:</strong> {equipo.SucursalActual}
+                          </div>
+                          <div>
+                            <strong>Usuario:</strong> {equipo.UsuarioAsignado}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {resultadosBusqueda.length === 0 && (
+              <div className="mt-6">
+                <div className="bg-white rounded-lg shadow p-6">
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">
+                      No se encontraron equipos con los filtros seleccionados
+                    </p>
+                    <p className="text-sm text-gray-500 mt-2">
+                      Prueba modificando los filtros de búsqueda
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         );
 
       case 'alta':
@@ -210,6 +324,74 @@ export default function EquiposManager({ vistaInicial = 'lista' }: EquiposManage
           </div>
         );
 
+      case 'dashboard':
+        return (
+          <EquiposDashboard
+            noSerie={equipoSeleccionado}
+            onVolver={() => setVistaActual('lista')}
+          />
+        );
+
+      case 'editar':
+        if (cargandoEquipo) {
+          return (
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+                <span>Cargando datos del equipo...</span>
+              </div>
+            </div>
+          );
+        }
+
+        if (!equipoParaEditar) {
+          return (
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="text-center py-8">
+                <p className="text-gray-600">No se pudieron cargar los datos del equipo</p>
+                <button
+                  onClick={() => setVistaActual('lista')}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Volver a Lista
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="bg-white rounded-lg shadow">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h3 className="text-lg font-medium text-gray-900">
+                Editar Equipo: {equipoSeleccionado}
+              </h3>
+              <button
+                onClick={() => {
+                  setVistaActual('lista');
+                  setEquipoParaEditar(null);
+                }}
+                className="px-3 py-2 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700"
+              >
+                <i className="fas fa-arrow-left mr-2"></i>Volver a Lista
+              </button>
+            </div>
+            <EquiposEditar
+              equipoData={equipoParaEditar}
+              onSave={(equipoActualizado) => {
+                console.log('Equipo actualizado:', equipoActualizado);
+                setVistaActual('lista');
+                setEquipoParaEditar(null);
+              }}
+              onCancel={() => {
+                setVistaActual('lista');
+                setEquipoParaEditar(null);
+              }}
+              isModal={false}
+            />
+          </div>
+        );
+
       default:
         return (
           <div className="bg-white rounded-lg shadow p-6 text-center">
@@ -244,7 +426,7 @@ export default function EquiposManager({ vistaInicial = 'lista' }: EquiposManage
               Equipo seleccionado: <strong>{equipoSeleccionado}</strong>
             </span>
             <button
-              onClick={() => setEquipoSeleccionado(null)}
+              onClick={() => setEquipoSeleccionado('')}
               className="text-white hover:text-gray-200 ml-2"
             >
               <i className="fas fa-times"></i>
@@ -252,6 +434,15 @@ export default function EquiposManager({ vistaInicial = 'lista' }: EquiposManage
           </div>
         </div>
       )}
+
+      {/* Modal de confirmación de eliminación */}
+      <ConfirmDeleteModal
+        isOpen={showDeleteModal}
+        onClose={cancelarEliminacion}
+        onConfirm={confirmarEliminacion}
+        equipoInfo={equipoAEliminar || { no_serie: '', nombreEquipo: '' }}
+        isDeleting={eliminandoEquipo}
+      />
     </div>
   );
 }

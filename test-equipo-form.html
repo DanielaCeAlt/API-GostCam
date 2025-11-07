@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Crear Equipo</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin-top: 20px; padding: 10px; background: #f8f9fa; border-radius: 4px; }
+        .error { background: #f8d7da; color: #721c24; }
+        .success { background: #d1edff; color: #155724; }
+    </style>
+</head>
+<body>
+    <h1>Test - Crear Equipo</h1>
+    <form id="equipoForm">
+        <div class="form-group">
+            <label for="noSerie">Número de Serie:</label>
+            <input type="text" id="noSerie" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="nombreEquipo">Nombre del Equipo:</label>
+            <input type="text" id="nombreEquipo" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="modelo">Modelo:</label>
+            <input type="text" id="modelo" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="idTipoEquipo">Tipo de Equipo:</label>
+            <select id="idTipoEquipo" required>
+                <option value="">Seleccionar...</option>
+                <option value="1">Camara 360</option>
+                <option value="2">Camara Domo</option>
+                <option value="3">DVR</option>
+                <option value="4">NVR</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="idEstatus">Estatus:</label>
+            <select id="idEstatus" required>
+                <option value="">Seleccionar...</option>
+                <option value="1">Disponible</option>
+                <option value="2">En uso</option>
+                <option value="3">Mantenimiento</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="idSucursal">Sucursal:</label>
+            <select id="idSucursal" required>
+                <option value="">Seleccionar...</option>
+                <option value="T008">Merza Celaya</option>
+                <option value="T014">Merza Estacion</option>
+                <option value="T011">Merza Jardines de Catedral</option>
+                <option value="T005">Merza Lazaro Cardenas</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="usuarioAsignado">Usuario Asignado:</label>
+            <select id="usuarioAsignado">
+                <option value="">Seleccionar...</option>
+                <option value="Admin">Admin</option>
+                <option value="Admin Principal">Admin Principal</option>
+                <option value="Técnico Juan">Técnico Juan</option>
+                <option value="Supervisor Centro">Supervisor Centro</option>
+            </select>
+        </div>
+        
+        <button type="submit">Crear Equipo</button>
+    </form>
+    
+    <div id="result" class="result" style="display: none;"></div>
+
+    <script>
+        document.getElementById('equipoForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                noSerie: document.getElementById('noSerie').value,
+                nombreEquipo: document.getElementById('nombreEquipo').value,
+                modelo: document.getElementById('modelo').value,
+                idTipoEquipo: parseInt(document.getElementById('idTipoEquipo').value),
+                idEstatus: parseInt(document.getElementById('idEstatus').value),
+                idSucursal: document.getElementById('idSucursal').value,
+                usuarioAsignado: document.getElementById('usuarioAsignado').value
+            };
+            
+            console.log('Enviando datos:', formData);
+            
+            try {
+                const response = await fetch('http://localhost:3000/api/equipos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                console.log('Respuesta:', result);
+                
+                const resultDiv = document.getElementById('result');
+                resultDiv.style.display = 'block';
+                
+                if (result.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `<strong>Éxito:</strong> ${result.message || 'Equipo creado correctamente'}`;
+                    document.getElementById('equipoForm').reset();
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `<strong>Error:</strong> ${result.error || 'Error desconocido'}`;
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                const resultDiv = document.getElementById('result');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<strong>Error de conexión:</strong> ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>

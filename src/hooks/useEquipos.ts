@@ -23,6 +23,7 @@ interface FiltrosBusqueda {
   tipoEquipo: string;
   estatus: string;
   sucursal: string;
+  usuarioAsignado: string;
   fechaAltaDesde: string;
   fechaAltaHasta: string;
   limite: number;
@@ -55,7 +56,8 @@ export function useEquipos() {
     try {
       const response = await apiService.get('/api/equipos');
       if (response.success) {
-        setEquipos(response.data || []);
+        const equiposData = Array.isArray(response.data) ? response.data : [];
+        setEquipos(equiposData);
       }
     } catch (error) {
       console.error('Error cargando equipos:', error);
@@ -67,19 +69,54 @@ export function useEquipos() {
   const buscarEquipos = useCallback(async (filtros: FiltrosBusqueda) => {
     setLoading(true);
     try {
-      const response = await apiService.post('/api/equipos/search', filtros);
+      // Construir parámetros de query para la API existente
+      const params = new URLSearchParams();
+      
+      if (filtros.texto && filtros.texto.trim() !== '') {
+        params.append('busqueda', filtros.texto.trim());
+      }
+      
+      // Para tipo de equipo y estatus, necesitamos convertir el ID al nombre
+      // Ya que la API espera nombres, no IDs
+      if (filtros.tipoEquipo && filtros.tipoEquipo !== '') {
+        // Si es un número (ID), necesitamos obtener el nombre del catálogo
+        // Por ahora, asumimos que se envía el nombre directamente desde el componente
+        params.append('tipoEquipo', filtros.tipoEquipo);
+      }
+      if (filtros.estatus && filtros.estatus !== '') {
+        params.append('estatus', filtros.estatus);
+      }
+      if (filtros.sucursal && filtros.sucursal !== '') {
+        params.append('sucursal', filtros.sucursal);
+      }
+      if (filtros.usuarioAsignado && filtros.usuarioAsignado !== '') {
+        params.append('usuario', filtros.usuarioAsignado);
+      }
+      
+      const queryString = params.toString();
+      const url = queryString ? `/api/equipos?${queryString}` : '/api/equipos';
+      
+      const response = await apiService.get(url);
       if (response.success) {
-        setEquipos(response.data || []);
-        setPaginacion(response.pagination || {
+        const equiposData = Array.isArray(response.data) ? response.data : [];
+        setEquipos(equiposData);
+        // La API existente no devuelve paginación, usar valores por defecto
+        setPaginacion({
           paginaActual: 1,
           totalPaginas: 1,
-          totalRegistros: 0,
+          totalRegistros: equiposData.length,
           hayAnterior: false,
           haySiguiente: false
         });
+        return equiposData; // Devolver los resultados directamente
+      } else {
+        setEquipos([]);
+        return [];
       }
     } catch (error) {
       console.error('Error en búsqueda:', error);
+      setEquipos([]);
+      return [];
     } finally {
       setLoading(false);
     }

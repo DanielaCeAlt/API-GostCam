@@ -2,14 +2,13 @@
 
 import React, { useEffect, useState } from 'react';
 import { useEquipos } from '@/hooks/useEquipos';
-import { useCatalogos } from '@/hooks/useCatalogos';
 import { useApp } from '@/contexts/AppContext';
 
 interface EquiposListProps {
   onEquipoSelect?: (noSerie: string) => void;
   onVerDetalles?: (noSerie: string) => void;
   onEditarEquipo?: (noSerie: string) => void;
-  onEliminarEquipo?: (noSerie: string) => void;
+  onEliminarEquipo?: (noSerie: string, nombreEquipo?: string) => void;
   onVerHistorial?: (noSerie: string) => void;
   onCambiarUbicacion?: (noSerie: string) => void;
   onMantenimiento?: (noSerie: string) => void;
@@ -34,13 +33,8 @@ export default function EquiposList({
     verDetallesEquipo 
   } = useEquipos();
   
-  const { tiposEquipo, sucursales, estatusEquipo } = useCatalogos();
-  
   const [filtros, setFiltros] = useState({
     texto: '',
-    tipoEquipo: '',
-    estatus: '',
-    sucursal: '',
     limite: 20,
     pagina: 1
   });
@@ -62,6 +56,10 @@ export default function EquiposList({
   const handleBuscar = () => {
     const filtrosBusqueda = {
       ...filtros,
+      tipoEquipo: '',
+      estatus: '',
+      sucursal: '',
+      usuarioAsignado: '',
       fechaAltaDesde: '',
       fechaAltaHasta: ''
     };
@@ -71,9 +69,6 @@ export default function EquiposList({
   const handleLimpiarFiltros = () => {
     setFiltros({
       texto: '',
-      tipoEquipo: '',
-      estatus: '',
-      sucursal: '',
       limite: 20,
       pagina: 1
     });
@@ -102,6 +97,10 @@ export default function EquiposList({
     const filtrosBusqueda = {
       ...filtros,
       pagina: nuevaPagina,
+      tipoEquipo: '',
+      estatus: '',
+      sucursal: '',
+      usuarioAsignado: '',
       fechaAltaDesde: '',
       fechaAltaHasta: ''
     };
@@ -138,63 +137,6 @@ export default function EquiposList({
               placeholder="Serie, nombre, modelo..."
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-          </div>
-
-          {/* Tipo de equipo */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tipo de Equipo
-            </label>
-            <select
-              value={filtros.tipoEquipo}
-              onChange={(e) => handleFiltroChange('tipoEquipo', e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Todos los tipos</option>
-              {tiposEquipo.map((tipo) => (
-                <option key={tipo.idTipoEquipo} value={tipo.idTipoEquipo.toString()}>
-                  {tipo.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Estatus */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Estatus
-            </label>
-            <select
-              value={filtros.estatus}
-              onChange={(e) => handleFiltroChange('estatus', e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Todos los estatus</option>
-              {estatusEquipo.map((estatus) => (
-                <option key={estatus.idEstatus} value={estatus.idEstatus.toString()}>
-                  {estatus.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Sucursal */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Sucursal
-            </label>
-            <select
-              value={filtros.sucursal}
-              onChange={(e) => handleFiltroChange('sucursal', e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Todas las sucursales</option>
-              {sucursales.map((sucursal) => (
-                <option key={sucursal.idCentro} value={sucursal.idCentro}>
-                  {sucursal.nombre}
-                </option>
-              ))}
-            </select>
           </div>
         </div>
 
@@ -327,7 +269,7 @@ export default function EquiposList({
                             <i className="fas fa-edit text-sm"></i>
                           </button>
                           <button 
-                            onClick={() => onEliminarEquipo?.(equipo.no_serie)}
+                            onClick={() => onEliminarEquipo?.(equipo.no_serie, equipo.nombreEquipo)}
                             className="text-red-600 hover:text-red-900 p-1"
                             title="Eliminar Equipo"
                           >
