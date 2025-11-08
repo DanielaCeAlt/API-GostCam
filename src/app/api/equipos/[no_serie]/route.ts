@@ -15,7 +15,7 @@ export async function GET(
       }, { status: 400 });
     }
 
-    // Consulta muy simple - TODO: agregar filtro de eliminados cuando tengamos las columnas
+    // Consulta para obtener detalles del equipo (solo activos)
     const equipoQuery = `
       SELECT 
         e.no_serie,
@@ -31,7 +31,7 @@ export async function GET(
       LEFT JOIN tipoequipo te ON e.idTipoEquipo = te.idTipoEquipo
       LEFT JOIN estatusequipo ee ON e.idEstatus = ee.idEstatus
       LEFT JOIN usuarios u ON e.idUsuarios = u.idUsuarios
-      WHERE e.no_serie = ?
+      WHERE e.no_serie = ? AND (e.eliminado = 0 OR e.eliminado IS NULL)
     `;
 
     const equipoResult = await executeQuery(equipoQuery, [no_serie]);
@@ -219,7 +219,7 @@ export async function DELETE(
   try {
     const { no_serie } = await params;
 
-    console.log('DELETE (Temporal - Físico) equipo:', no_serie);
+    console.log('DELETE (Lógico) equipo:', no_serie);
 
     if (!no_serie) {
       return NextResponse.json({
@@ -228,9 +228,9 @@ export async function DELETE(
       }, { status: 400 });
     }
 
-    // Verificar que el equipo existe
+    // Verificar que el equipo existe y no está ya eliminado
     const existeQuery = `
-      SELECT no_serie, nombreEquipo
+      SELECT no_serie, nombreEquipo, eliminado
       FROM equipo 
       WHERE no_serie = ?
     `;
@@ -245,25 +245,47 @@ export async function DELETE(
 
     const equipo = existeResult[0] as any;
 
-    // TEMPORAL: Eliminación física hasta tener columnas de eliminación lógica
-    const deleteQuery = `DELETE FROM equipo WHERE no_serie = ?`;
+    if (equipo.eliminado === 1) {
+      return NextResponse.json({
+        success: false,
+        error: 'El equipo ya está eliminado'
+      }, { status: 400 });
+    }
+
+    // ✅ ELIMINACIÓN LÓGICA: Marcar como eliminado sin borrar el registro
+    const deleteQuery = `
+      UPDATE equipo 
+      SET 
+        eliminado = 1,
+        fechaEliminacion = NOW(),
+        usuarioEliminacion = 'Sistema'
+      WHERE no_serie = ? AND eliminado = 0
+    `;
     const result = await executeQuery(deleteQuery, [no_serie]);
 
-    console.log('✅ Equipo eliminado (físicamente - temporal):', no_serie);
+    if ((result as any).affectedRows === 0) {
+      return NextResponse.json({
+        success: false,
+        error: 'No se pudo eliminar el equipo'
+      }, { status: 500 });
+    }
+
+    console.log('✅ Equipo eliminado lógicamente:', no_serie);
 
     return NextResponse.json({
       success: true,
       data: {
         no_serie: equipo.no_serie,
         nombreEquipo: equipo.nombreEquipo,
-        tipoEliminacion: 'física_temporal',
-        fechaEliminacion: new Date().toISOString()
+        tipoEliminacion: 'lógica',
+        fechaEliminacion: new Date().toISOString(),
+        conservadoEnBD: true
       },
-      message: 'Equipo eliminado exitosamente (eliminación física temporal)'
+      message: 'Equipo eliminado exitosamente (el registro se conserva en la base de datos)'
     }, { status: 200 });
 
   } catch (error) {
-    console.error('Error eliminando equipo (temporal):', error);
+    console.error('Error eliminando equipo lógicamente:', error);
     return NextResponse.json({
       success: false,
       error: 'Error interno del servidor',

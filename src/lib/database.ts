@@ -112,69 +112,8 @@ export const getEquiposCompletos = async (filters?: {
   usuario?: string;
   busqueda?: string;
 }): Promise<VistaEquipoCompleto[]> => {
-  // Primero verificar si la vista existe
-  try {
-    const vistaExists = await executeQuery<any>('SHOW TABLES LIKE "VistaEquiposCompletos"', []);
-    
-    if (vistaExists.length === 0) {
-      // Fallback a tabla equipos directamente
-      return getEquiposFromTable(filters);
-    }
-  } catch (error) {
-    return getEquiposFromTable(filters);
-  }
-
-  let query = 'SELECT * FROM GostCAM.VistaEquiposCompletos';
-  const params: (string | number | Date | null | undefined)[] = [];
-  const conditions: string[] = [];
-
-  // TODO: Descomentar cuando se agreguen las columnas de eliminación lógica
-  // conditions.push('(eliminado IS NULL OR eliminado = 0)');
-
-  if (filters) {
-    if (filters.sucursal) {
-      // Buscar por nombre exacto de sucursal
-      conditions.push('SucursalActual = ?');
-      params.push(filters.sucursal);
-    }
-    if (filters.tipoEquipo) {
-      conditions.push('TipoEquipo = ?');
-      params.push(filters.tipoEquipo);
-    }
-    if (filters.estatus) {
-      conditions.push('EstatusEquipo = ?');
-      params.push(filters.estatus);
-    }
-    if (filters.usuario) {
-      conditions.push('UsuarioAsignado LIKE ?');
-      params.push(`%${filters.usuario}%`);
-    }
-    if (filters.busqueda) {
-      // Búsqueda global en todos los campos principales
-      conditions.push(`(
-        nombreEquipo LIKE ? OR 
-        no_serie LIKE ? OR 
-        numeroActivo LIKE ? OR
-        TipoEquipo LIKE ? OR
-        EstatusEquipo LIKE ? OR
-        SucursalActual LIKE ? OR
-        UsuarioAsignado LIKE ?
-      )`);
-      // Repetir el término de búsqueda para cada campo
-      const termino = `%${filters.busqueda}%`;
-      params.push(termino, termino, termino, termino, termino, termino, termino);
-    }
-  }
-
-  if (conditions.length > 0) {
-    query += ' WHERE ' + conditions.join(' AND ');
-  }
-
-  query += ' ORDER BY fechaAlta DESC';
-
-  const result = await executeQuery<VistaEquipoCompleto>(query, params);
-  
-  return result;
+  // Usar directamente la tabla equipo con una consulta simple
+  return getEquiposFromTable(filters);
 };
 
 // Función fallback para consultar tabla equipos directamente
@@ -190,40 +129,36 @@ const getEquiposFromTable = async (filters?: {
       e.no_serie,
       e.nombreEquipo,
       e.numeroActivo,
+      e.modelo,
       e.fechaAlta,
       e.idPosicion,
-      te.nombre as TipoEquipo,
-      ee.nombre as EstatusEquipo,
-      s.nombre as SucursalActual,
-      u.nombre as UsuarioAsignado
-    FROM equipos e
-    LEFT JOIN tiposequipo te ON e.idTipoEquipo = te.id
-    LEFT JOIN estatusequipo ee ON e.idEstatusEquipo = ee.id
-    LEFT JOIN sucursales s ON e.idPosicion = s.id
-    LEFT JOIN usuarios u ON e.idUsuarioAsignado = u.id
+      te.nombreTipo as TipoEquipo,
+      ee.estatus as EstatusEquipo,
+      'Centro Principal' as SucursalActual,
+      u.NombreUsuario as UsuarioAsignado
+    FROM equipo e
+    LEFT JOIN tipoequipo te ON e.idTipoEquipo = te.idTipoEquipo
+    LEFT JOIN estatusequipo ee ON e.idEstatus = ee.idEstatus
+    LEFT JOIN usuarios u ON e.idUsuarios = u.idUsuarios
   `;
   
   const params: (string | number | Date | null | undefined)[] = [];
   const conditions: string[] = [];
 
-  // TODO: Descomentar cuando se agreguen las columnas de eliminación lógica
-  // conditions.push('(e.eliminado IS NULL OR e.eliminado = 0)');
+  // ✅ Filtrar equipos eliminados lógicamente
+  conditions.push('(e.eliminado IS NULL OR e.eliminado = 0)');
 
   if (filters) {
-    if (filters.sucursal) {
-      conditions.push('s.codigo = ?');
-      params.push(filters.sucursal);
-    }
     if (filters.tipoEquipo) {
-      conditions.push('te.nombre = ?');
+      conditions.push('te.nombreTipo = ?');
       params.push(filters.tipoEquipo);
     }
     if (filters.estatus) {
-      conditions.push('ee.nombre = ?');
+      conditions.push('ee.estatus = ?');
       params.push(filters.estatus);
     }
     if (filters.usuario) {
-      conditions.push('u.nombre LIKE ?');
+      conditions.push('u.NombreUsuario LIKE ?');
       params.push(`%${filters.usuario}%`);
     }
     if (filters.busqueda) {
@@ -232,10 +167,10 @@ const getEquiposFromTable = async (filters?: {
         e.nombreEquipo LIKE ? OR 
         e.no_serie LIKE ? OR 
         e.numeroActivo LIKE ? OR
-        te.nombre LIKE ? OR
-        ee.nombre LIKE ? OR
-        s.nombre LIKE ? OR
-        u.nombre LIKE ?
+        e.modelo LIKE ? OR
+        te.nombreTipo LIKE ? OR
+        ee.estatus LIKE ? OR
+        u.NombreUsuario LIKE ?
       )`);
       // Repetir el término de búsqueda para cada campo
       const termino = `%${filters.busqueda}%`;
@@ -322,19 +257,26 @@ export const getCatalogos = async () => {
     };
 
     // Obtener catálogos básicos que probablemente existan
-    const usuarios = await executeWithFallback('SELECT * FROM usuarios ORDER BY id', []);
+    const usuarios = await executeWithFallback('SELECT * FROM usuarios', []);
     
     // Para tipos de equipo, intentar múltiples variantes
-    const tiposEquipo = await executeWithFallback('SELECT * FROM tipoequipo ORDER BY id', []);
+    const tiposEquipo = await executeWithFallback('SELECT * FROM tipoequipo', []);
     
     // Para estatus, intentar múltiples variantes  
-    const estatusEquipos = await executeWithFallback('SELECT * FROM estatusequipo ORDER BY id', []);
+    const estatusEquipos = await executeWithFallback('SELECT * FROM estatusequipo', []);
     
     // Para posiciones, usar valores por defecto si no existe
-    const posiciones = await executeWithFallback('SELECT * FROM posiciones ORDER BY id', [
+    const posiciones = await executeWithFallback('SELECT * FROM posiciones', [
       { id: 1, nombre: 'Entrada Principal' },
       { id: 2, nombre: 'Recepción' },
       { id: 3, nombre: 'Oficina' }
+    ]);
+
+    // Para sucursales, intentar obtener de la tabla de equipos o crear por defecto
+    const sucursales = await executeWithFallback('SELECT DISTINCT SucursalActual as nombre, SucursalActual as id FROM equipos WHERE SucursalActual IS NOT NULL AND SucursalActual != ""', [
+      { id: 'SUC001', nombre: 'Sucursal Principal' },
+      { id: 'SUC002', nombre: 'Sucursal Norte' },
+      { id: 'SUC003', nombre: 'Sucursal Sur' }
     ]);
 
     return {
@@ -342,11 +284,11 @@ export const getCatalogos = async () => {
       estatusEquipos,
       usuarios,
       posiciones,
+      sucursales,
       // Catálogos adicionales vacíos por ahora
       estados: [],
       municipios: [],
-      zonas: [],
-      sucursales: []
+      zonas: []
     };
   } catch (error) {
     console.error('Error obteniendo catálogos:', error);

@@ -36,11 +36,11 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
         
         <div className="mb-6">
           <p className="text-sm text-gray-600 mb-3">
-            ¿Estás seguro de que deseas eliminar este equipo? Esta acción eliminará físicamente el registro.
+            ¿Estás seguro de que deseas eliminar este equipo? 
           </p>
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
-            <p className="text-xs text-yellow-700 font-medium">
-              ⚠️ Eliminación Física Temporal: El equipo se eliminará completamente hasta implementar eliminación lógica
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+            <p className="text-xs text-green-700 font-medium">
+              Esta acción no se puede deshacer.
             </p>
           </div>
           <div className="bg-gray-50 rounded-lg p-3">

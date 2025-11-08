@@ -5,6 +5,9 @@ export { default as EquiposBusqueda } from './EquiposBusqueda';
 export { default as EquiposAlta } from './EquiposAlta';
 export { default as EquiposDashboard } from './EquiposDashboard';
 export { default as EquiposEditar } from './EquiposEditar';
+export { default as EquiposCambioUbicacion } from './EquiposCambioUbicacion';
+export { default as EquiposMantenimiento } from './EquiposMantenimiento';
+export { default as EquiposFallas } from './EquiposFallas';
 export { default as ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 // Re-exportar hooks relacionados

@@ -6,6 +6,8 @@ import EquiposBusqueda from './EquiposBusqueda';
 import EquiposAlta from './EquiposAlta';
 import EquiposDashboard from './EquiposDashboard';
 import EquiposEditar from './EquiposEditar';
+import EquiposCambioUbicacion from './EquiposCambioUbicacion';
+import EquiposMantenimiento from './EquiposMantenimiento';
 import ConfirmDeleteModal from './ConfirmDeleteModal';
 import { apiService } from '@/lib/apiService';
 
@@ -21,6 +23,7 @@ export default function EquiposManager({ vistaInicial = 'lista' }: EquiposManage
   // Estado para equipos seleccionados y operaciones
   const [equipoSeleccionado, setEquipoSeleccionado] = useState<string>('');
   const [equipoParaEditar, setEquipoParaEditar] = useState<any>(null);
+  const [equipoParaCambioUbicacion, setEquipoParaCambioUbicacion] = useState<any>(null);
   const [cargandoEquipo, setCargandoEquipo] = useState(false);
   const [resultadosBusqueda, setResultadosBusqueda] = useState<any[]>([]);
   
@@ -137,8 +140,30 @@ export default function EquiposManager({ vistaInicial = 'lista' }: EquiposManage
   };
 
   const handleCambiarUbicacion = (noSerie: string) => {
-    setEquipoSeleccionado(noSerie);
-    setVistaActual('cambiarUbicacion');
+    cargarEquipoParaCambioUbicacion(noSerie);
+  };
+
+  // Función para cargar datos del equipo para cambio de ubicación
+  const cargarEquipoParaCambioUbicacion = async (noSerie: string) => {
+    setCargandoEquipo(true);
+    try {
+      const response = await fetch(`/api/equipos/${noSerie}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setEquipoParaCambioUbicacion(data.data.equipo);
+        setEquipoSeleccionado(noSerie);
+        setVistaActual('cambiarUbicacion');
+      } else {
+        console.error('Error cargando equipo:', data.error);
+        alert('Error cargando los datos del equipo');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error de conexión');
+    } finally {
+      setCargandoEquipo(false);
+    }
   };
 
   const handleMantenimiento = (noSerie: string) => {
@@ -283,11 +308,39 @@ export default function EquiposManager({ vistaInicial = 'lista' }: EquiposManage
         );
 
       case 'cambiarUbicacion':
+        if (cargandoEquipo) {
+          return (
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+                <span>Cargando datos del equipo...</span>
+              </div>
+            </div>
+          );
+        }
+
+        if (!equipoParaCambioUbicacion) {
+          return (
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="text-center py-8">
+                <i className="fas fa-exclamation-triangle text-4xl text-yellow-400 mb-4"></i>
+                <p className="text-gray-600">No se pudieron cargar los datos del equipo</p>
+                <button
+                  onClick={() => setVistaActual('lista')}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Volver a Lista
+                </button>
+              </div>
+            </div>
+          );
+        }
+
         return (
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-white rounded-lg shadow">
+            <div className="flex justify-between items-center p-6 border-b">
               <h3 className="text-lg font-medium text-gray-900">
-                Cambiar Ubicación del Equipo: {equipoSeleccionado}
+                Cambiar Ubicación - {equipoParaCambioUbicacion.nombreEquipo}
               </h3>
               <button
                 onClick={() => setVistaActual('lista')}
@@ -296,32 +349,29 @@ export default function EquiposManager({ vistaInicial = 'lista' }: EquiposManage
                 <i className="fas fa-arrow-left mr-2"></i>Volver a Lista
               </button>
             </div>
-            <div className="text-center py-8">
-              <i className="fas fa-exchange-alt text-4xl text-rose-400 mb-4"></i>
-              <p className="text-gray-600">Funcionalidad de cambio de ubicación en desarrollo...</p>
-            </div>
+            <EquiposCambioUbicacion
+              equipoData={equipoParaCambioUbicacion}
+              onSave={(transferencia) => {
+                console.log('Transferencia completada:', transferencia);
+                setVistaActual('lista');
+                setRefreshList(prev => prev + 1);
+                // Limpiar datos del equipo
+                setEquipoParaCambioUbicacion(null);
+                setEquipoSeleccionado('');
+              }}
+              onCancel={() => {
+                setVistaActual('lista');
+                setEquipoParaCambioUbicacion(null);
+                setEquipoSeleccionado('');
+              }}
+              isModal={false}
+            />
           </div>
         );
 
       case 'mantenimientoEquipo':
         return (
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-medium text-gray-900">
-                Mantenimiento del Equipo: {equipoSeleccionado}
-              </h3>
-              <button
-                onClick={() => setVistaActual('lista')}
-                className="px-3 py-2 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700"
-              >
-                <i className="fas fa-arrow-left mr-2"></i>Volver a Lista
-              </button>
-            </div>
-            <div className="text-center py-8">
-              <i className="fas fa-tools text-4xl text-orange-400 mb-4"></i>
-              <p className="text-gray-600">Funcionalidad de mantenimiento específico en desarrollo...</p>
-            </div>
-          </div>
+          <EquiposMantenimiento />
         );
 
       case 'dashboard':

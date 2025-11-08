@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Setup Database - Posiciones</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Setup Database - Tabla Posiciones</h1>
+    
+    <button onclick="verificarTabla()">Verificar Tabla</button>
+    <button onclick="crearTabla()">Crear Tabla</button>
+    
+    <div id="resultado"></div>
+    
+    <script>
+        async function verificarTabla() {
+            const resultado = document.getElementById('resultado');
+            resultado.innerHTML = '<p class="info">Verificando tabla...</p>';
+            
+            try {
+                const response = await fetch('/api/setup-posiciones');
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.tableExists) {
+                        resultado.innerHTML = `
+                            <p class="success">✅ La tabla posiciones existe</p>
+                            <p>Total de posiciones: ${data.data.length}</p>
+                            <pre>${JSON.stringify(data.data, null, 2)}</pre>
+                        `;
+                    } else {
+                        resultado.innerHTML = '<p class="error">❌ La tabla posiciones no existe</p>';
+                    }
+                } else {
+                    resultado.innerHTML = `<p class="error">Error: ${data.error}</p>`;
+                }
+            } catch (error) {
+                resultado.innerHTML = `<p class="error">Error de conexión: ${error.message}</p>`;
+            }
+        }
+        
+        async function crearTabla() {
+            const resultado = document.getElementById('resultado');
+            resultado.innerHTML = '<p class="info">Creando tabla...</p>';
+            
+            try {
+                const response = await fetch('/api/setup-posiciones', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultado.innerHTML = `
+                        <p class="success">✅ ${data.message}</p>
+                        <p>Total de posiciones: ${data.data.totalPosiciones}</p>
+                        <pre>${JSON.stringify(data.data.posiciones, null, 2)}</pre>
+                    `;
+                } else {
+                    resultado.innerHTML = `<p class="error">Error: ${data.error}</p>`;
+                }
+            } catch (error) {
+                resultado.innerHTML = `<p class="error">Error de conexión: ${error.message}</p>`;
+            }
+        }
+        
+        // Verificar automáticamente al cargar
+        verificarTabla();
+    </script>
+</body>
+</html>

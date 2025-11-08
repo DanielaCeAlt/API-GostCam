@@ -11,6 +11,74 @@ interface CountResult {
   total: number;
 }
 
+// GET: Búsqueda rápida por query parameter
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const q = searchParams.get('q');
+    const limit = parseInt(searchParams.get('limit') || '10');
+
+    if (!q || q.trim() === '') {
+      return NextResponse.json({
+        success: true,
+        data: [],
+        message: 'Término de búsqueda vacío'
+      } as ApiResponse<VistaEquipoCompleto[]>, { status: 200 });
+    }
+
+    console.log('🔍 Búsqueda rápida:', q);
+
+    // Búsqueda simple en campos principales
+    const query = `
+      SELECT 
+        e.no_serie,
+        e.nombreEquipo,
+        e.modelo,
+        e.numeroActivo,
+        e.fechaAlta,
+        te.nombreTipo AS TipoEquipo,
+        ee.estatus AS EstatusEquipo,
+        'Centro Principal' AS SucursalActual,
+        'Área Principal' AS AreaActual,
+        u.NombreUsuario AS UsuarioAsignado
+      FROM equipo e
+      LEFT JOIN tipoequipo te ON e.idTipoEquipo = te.idTipoEquipo
+      LEFT JOIN estatusequipo ee ON e.idEstatus = ee.idEstatus
+      LEFT JOIN usuarios u ON e.idUsuarios = u.idUsuarios
+      WHERE (e.eliminado = 0 OR e.eliminado IS NULL)
+        AND (
+          e.no_serie LIKE ? OR 
+          e.nombreEquipo LIKE ? OR 
+          e.modelo LIKE ? OR 
+          e.numeroActivo LIKE ?
+        )
+      ORDER BY e.fechaAlta DESC
+      LIMIT ?
+    `;
+
+    const searchTerm = `%${q.trim()}%`;
+    const equipos = await executeQuery<VistaEquipoCompleto>(query, [
+      searchTerm, searchTerm, searchTerm, searchTerm, limit
+    ]);
+
+    console.log('✅ Equipos encontrados (búsqueda rápida):', equipos.length);
+
+    return NextResponse.json({
+      success: true,
+      data: equipos,
+      message: `${equipos.length} equipos encontrados`
+    } as ApiResponse<VistaEquipoCompleto[]>, { status: 200 });
+
+  } catch (error) {
+    console.error('❌ Error en búsqueda rápida:', error);
+    return NextResponse.json({
+      success: false,
+      error: 'Error interno del servidor',
+      details: error instanceof Error ? error.message : 'Error desconocido'
+    } as ApiResponse<VistaEquipoCompleto[]>, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
