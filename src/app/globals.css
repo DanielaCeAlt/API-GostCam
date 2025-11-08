@@ -2,6 +2,23 @@
 
 body {
   box-sizing: border-box;
+  /* Fondo gris claro para toda la página */
+  background-color: #f9fafb; /* Equivale a bg-gray-50 */
+}
+
+html {
+  background-color: #f9fafb; /* Equivale a bg-gray-50 */
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #111827; /* Equivale a bg-gray-900 */
+  }
+  
+  html {
+    background-color: #111827; /* Equivale a bg-gray-900 */
+  }
 }
 
 .fade-in {
