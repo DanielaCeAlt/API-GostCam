@@ -16,16 +16,16 @@ bcrypt==4.1.2
 python-dotenv==1.0.0
 python-multipart==0.0.6
 
-# Core Python dependencies - Fixed all compatibility issues
-pydantic>=2.5.0,<2.6.0
-pydantic_core>=2.14.1,<2.15.0
+# Core Python dependencies - Fixed for Azure Python 3.11 compatibility
+pydantic==2.4.2
+pydantic_core==2.10.1
 starlette>=0.27.0,<0.28.0
 anyio>=3.7.1,<4.0.0
-click==8.2.1
-h11==0.16.0
-idna==3.10
-sniffio==1.3.1
-typing_extensions==4.15.0
+click==8.1.7
+h11==0.14.0
+idna==3.4
+sniffio==1.3.0
+typing_extensions==4.8.0
 
 # Security and cryptography - Updated for compatibility
 cryptography>=41.0.0,<43.0.0
@@ -33,6 +33,6 @@ cffi>=1.15.0
 pycparser>=2.20
 
 # Additional utilities
-annotated-types==0.7.0
+annotated-types==0.6.0
 greenlet>=3.0.0
 colorama==0.4.6
