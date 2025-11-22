@@ -1,0 +1,5 @@
+[build-system]
+requires = ["wheel"]
+
+[tool.azure]
+startup_file = "application.py"
