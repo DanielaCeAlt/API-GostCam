@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Request, Depends, HTTPException, status, Query
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 from functools import wraps
 import uvicorn
 import time
@@ -21,8 +20,14 @@ from modelos.InventarioModel import (
     EquiposPorTipoSalida, MovimientosEquipoSalida
 )
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+app = FastAPI(
+    title="Sistema de Gestión de Inventarios - GostCAM",
+    description="API REST para gestión de inventarios de equipos de seguridad",
+    version="2.0.0"
+)
+
+@app.on_event("startup")
+async def startup_event():
     print("🚀 Aplicación GostCAM iniciada correctamente")
     print("📊 Versión: 2.0.0")
     if verificar_conexion():
@@ -34,16 +39,10 @@ async def lifespan(app: FastAPI):
     print("🗣️ Iniciando limpieza automática de cache...")
     schedule_cache_cleanup()
     print("✅ Sistema de cache inicializado")
-    
-    yield
-    print("🛑 Aplicación GostCAM terminada")
 
-app = FastAPI(
-    title="Sistema de Gestión de Inventarios - GostCAM",
-    description="API REST para gestión de inventarios de equipos de seguridad",
-    version="2.0.0",
-    lifespan=lifespan
-)
+@app.on_event("shutdown")
+async def shutdown_event():
+    print("🛑 Aplicación GostCAM terminada")
 
 # Middleware CORS
 app.add_middleware(

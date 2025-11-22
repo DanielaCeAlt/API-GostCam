@@ -1,36 +1,36 @@
-# Core FastAPI dependencies - Using older compatible versions
-fastapi==0.95.2
-uvicorn[standard]==0.22.0
+# Core FastAPI dependencies - Using Python 3.13 compatible versions
+fastapi==0.68.0
+uvicorn[standard]==0.15.0
 gunicorn==20.1.0
 
 # Database dependencies
-SQLAlchemy==2.0.23
-PyMySQL==1.1.0
+SQLAlchemy==1.4.23
+PyMySQL==1.0.2
 
 # Authentication and security
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-bcrypt==4.0.1
+bcrypt==3.2.0
 
 # Configuration and utilities
-python-dotenv==1.0.0
-python-multipart==0.0.6
+python-dotenv==0.19.0
+python-multipart==0.0.5
 
-# Core Python dependencies - Using much older stable versions
-pydantic==1.10.12
-starlette==0.27.0
-anyio==3.7.1
-click==8.1.3
-h11==0.14.0
-idna==3.4
-sniffio==1.3.0
-typing_extensions==4.7.1
+# Core Python dependencies - Maximum compatibility versions
+pydantic==1.8.2
+starlette==0.14.2
+anyio==3.3.4
+click==8.0.3
+h11==0.12.0
+idna==3.2
+sniffio==1.2.0
+typing_extensions==3.10.0.2
 
 # Security and cryptography
-cryptography>=3.4.8,<42.0.0
-cffi>=1.15.0
-pycparser>=2.20
+cryptography==3.4.8
+cffi==1.15.0
+pycparser==2.20
 
 # Additional utilities
-greenlet>=2.0.0
-colorama==0.4.6
+greenlet==1.1.2
+colorama==0.4.4
