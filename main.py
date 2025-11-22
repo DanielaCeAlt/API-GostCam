@@ -156,6 +156,47 @@ def obtener_usuario_actual(credenciales: HTTPBasicCredentials = Depends(segurida
     
     return usuario
 
+# ====== ENDPOINT DE HEALTH CHECK ======
+@app.get("/health", summary="Health Check", description="Endpoint para verificar el estado de la API")
+async def health_check():
+    """
+    Endpoint de health check para Azure App Service y monitoreo
+    """
+    try:
+        # Verificar conexión a base de datos
+        db_status = verificar_conexion()
+        
+        return {
+            "status": "healthy",
+            "service": "GostCAM API",
+            "version": "2.0.0",
+            "database": "connected" if db_status else "disconnected",
+            "timestamp": time.time(),
+            "cache": "active" if cache_manager else "inactive"
+        }
+    except Exception as e:
+        gostcam_logger.logger.error(f"Health check failed: {str(e)}")
+        return {
+            "status": "unhealthy",
+            "service": "GostCAM API",
+            "version": "2.0.0",
+            "error": str(e),
+            "timestamp": time.time()
+        }
+
+@app.get("/", summary="API Info", description="Información básica de la API")
+async def api_info():
+    """
+    Endpoint raíz con información de la API
+    """
+    return {
+        "message": "GostCAM API - Sistema de Gestión de Inventarios",
+        "version": "2.0.0",
+        "status": "running",
+        "docs": "/docs",
+        "health": "/health"
+    }
+
 def verificar_rol(usuario, roles_permitidos: list):
     nivel = getattr(usuario, 'nivel', usuario.get('nivel') if isinstance(usuario, dict) else None)
     
