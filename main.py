@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, Depends, HTTPException, status, Query
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from functools import wraps
 import uvicorn
 import time
@@ -20,16 +21,11 @@ from modelos.InventarioModel import (
     EquiposPorTipoSalida, MovimientosEquipoSalida
 )
 
-app = FastAPI(
-    title="Sistema de Gestión de Inventarios - GostCAM",
-    description="API REST para gestión de inventarios de equipos de seguridad",
-    version="2.0.0"
-)
-
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     print("🚀 Aplicación GostCAM iniciada correctamente")
     print("📊 Versión: 2.0.0")
+    print("🐍 Python 3.11 runtime")
     if verificar_conexion():
         print("✅ Conexión a base de datos establecida")
     else:
@@ -39,10 +35,16 @@ async def startup_event():
     print("🗣️ Iniciando limpieza automática de cache...")
     schedule_cache_cleanup()
     print("✅ Sistema de cache inicializado")
-
-@app.on_event("shutdown")
-async def shutdown_event():
+    
+    yield
     print("🛑 Aplicación GostCAM terminada")
+
+app = FastAPI(
+    title="Sistema de Gestión de Inventarios - GostCAM",
+    description="API REST para gestión de inventarios de equipos de seguridad",
+    version="2.0.0",
+    lifespan=lifespan
+)
 
 # Middleware CORS
 app.add_middleware(
@@ -311,7 +313,7 @@ async def registrar_alta_equipo(equipo: AltaEntrada, request: Request, usuario_a
     verificar_rol(usuario_actual, [1, 2])
     dao = DAOInventario(sesion)
     try:
-        return dao.registrar_alta(equipo.dict())
+        return dao.registrar_alta(equipo.model_dump())
     except ValueError as error:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(error))
     except Exception as error:
@@ -322,7 +324,7 @@ async def registrar_baja_equipo(datos: BajaEntrada, usuario_actual = Depends(obt
     verificar_rol(usuario_actual, [1, 2])
     dao = DAOInventario(sesion)
     try:
-        return dao.registrar_baja(datos.dict())
+        return dao.registrar_baja(datos.model_dump())
     except ValueError as error:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(error))
     except Exception as error:
@@ -333,7 +335,7 @@ async def actualizar_estado_equipo(datos: EstadoEquipoEntrada, usuario_actual = 
     verificar_rol(usuario_actual, [1, 2, 3])
     dao = DAOInventario(sesion)
     try:
-        return dao.actualizar_estado(datos.dict())
+        return dao.actualizar_estado(datos.model_dump())
     except ValueError as error:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(error))
     except Exception as error:
@@ -344,7 +346,7 @@ async def actualizar_movimiento(datos: MovimientoActualizarEntrada, usuario_actu
     verificar_rol(usuario_actual, [1, 2])
     dao = DAOInventario(sesion)
     try:
-        return dao.actualizar_movimiento(datos.dict())
+        return dao.actualizar_movimiento(datos.model_dump())
     except ValueError as error:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(error))
     except Exception as error:
@@ -396,7 +398,7 @@ async def registrar_mantenimiento(datos: MantenimientoEntrada, usuario_actual = 
     verificar_rol(usuario_actual, [1, 2, 3])
     dao = DAOInventario(sesion)
     try:
-        return dao.registrar_mantenimiento(datos.dict())
+        return dao.registrar_mantenimiento(datos.model_dump())
     except ValueError as error:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(error))
     except Exception as error:
